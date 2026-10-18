@@ -1,0 +1,2972 @@
+diff --git a/DEMO_SCRIPT.md b/DEMO_SCRIPT.md
+deleted file mode 100644
+index 9442a71..0000000
+--- a/DEMO_SCRIPT.md
++++ /dev/null
+@@ -1,33 +0,0 @@
+-# AutoShield demo recording (about 3 minutes)
+-
+-Use the deterministic fixture and synthetic DevOps logs. Record only actual results; keep keys and account details off screen.
+-
+-## Before recording
+-
+-1. Start the complete stack using README instructions. Verify service health.
+-2. Configure scanner and DevOps ArmorIQ policies for their separate agent identities.
+-3. In Session, use `http://fixture-lab:8090/`, passive mode, 5 pages, 20 requests, 120 seconds. Confirm authorization. Rehearse an allowed run.
+-4. Prepare a second policy configuration that denies the scanner request. Keep all other permissions scoped to the lab. Rehearse the denial separately.
+-5. Open the relevant ArmorIQ decision view. Verify it corresponds to the agent/tool and recording run; do not present old events as new.
+-
+-## Recording sequence
+-
+-| Time | Show | Explain |
+-| --- | --- | --- |
+-| 0:00–0:20 | Dashboard and Session readiness | “AutoShield is a policy-enforced assessment workspace. Configuration readiness is separate from a verified policy decision.” |
+-| 0:20–1:05 | Start allowed fixture scan; open Activity | “Each target GET travels through MCP and needs an explicit ArmorIQ allow. Scope, DNS, TLS and budgets still apply.” |
+-| 1:05–1:30 | One observation and its evidence | “This observation is linked to its response and hash. A missing header is a configuration observation, not proof of exploitation.” |
+-| 1:30–2:10 | Enable the prepared deny policy; start a fresh scan | “The denied first request was not executed.” Show the policy outcome, stopped/failed scan and zero target requests. Correlate with ArmorIQ console evidence. |
+-| 2:10–2:40 | Export HTML/JSON report | “The result is reviewable evidence. Denied and partial runs retain their history.” |
+-| 2:40–3:00 | Limits and architecture | “Selected response checks and two optional query probes; no complete Top 10 or exploit-confirmation claim.” |
+-
+-Optional: briefly show the separate DevOps MCP lab's injection replay. Label it a scripted proposal using real MCP transport and guard. A local deterministic denial is not a cloud denial. If ArmorIQ mode is disabled, say “local policy only.”
+-
+-If cloud setup fails, show the failure honestly. Do not substitute a replay or mocked allow and call it live cloud enforcement. AI review is optional and advisory; it cannot execute scan tools.
+-
+-## Evidence checklist
+-
+-- Allowed request: actual successful target response and recorded ArmorIQ allow.
+-- Denied first request: recorded block, zero target requests, matching console evidence if available.
+-- Export: policy outcome, scan limits, findings and coverage limitations.
+-- WAF claims, if included: separately demonstrate actual candidate validation and before/after enforcement; scanner output alone does not prove patch deployment.
+diff --git a/README.md b/README.md
+index e30f81c..0fc7fe2 100644
+--- a/README.md
++++ b/README.md
+@@ -1,93 +1,56 @@
+-# AutoShield AI
++# AutoShield-AI
+ 
+-**Policy-enforced web assessment with MCP, ArmorIQ and auditable evidence.**
++**Policy-enforced web assessment, constrained WAF rule compilation and auditable MCP tools.**
+ 
+-AutoShield crawls an authorized HTTP(S) origin, records selected response observations, and optionally runs two bounded query probes. Every scanner target GET passes through an official MCP stdio gateway and requires an explicit ArmorIQ allow before execution. A separate DevOps MCP lab demonstrates constrained tools, untrusted log handling and policy decisions.
++AutoShield uses a FastAPI backend, React/Vite dashboard, SQLite evidence store and ArmorIQ-gated MCP scanner. Its separate WAF lab turns supported SQL injection log findings into trusted ModSecurity rule templates; AI review remains advisory.
+ 
+-## Start the recommended dashboard
++## Start the demo
+ 
+-Install Docker Desktop with Compose. From this directory:
++Install Docker Desktop and use Linux containers. In PowerShell, from this directory:
+ 
+ ```powershell
+-Copy-Item .env.example .env
++.\start-demo.ps1
+ ```
+ 
+-On Linux/macOS use `cp .env.example .env`. Edit `.env` locally:
++The launcher creates `.env` only if absent, asks for a missing ArmorIQ key without displaying it, validates all four Compose files, builds the stack, waits for service readiness and opens [the dashboard](http://localhost:8502). A key still needs matching console policies; startup does not claim live cloud authorization. Optional Groq/Gemini keys can be added to `.env` before launch.
+ 
+-- Set `ARMORIQ_API_KEY` (required for scanner execution).
+-- Keep `MCP_ARMORIQ_MODE=required` for cloud enforcement in the DevOps lab.
+-- Set `GROQ_API_KEY` only if using the live DevOps agent or Groq advisory review. AI review is optional.
+-
+-Configure matching ArmorIQ console policies first. Scanner identity: agent `autoshield-scanner`, user `local-scan-operator`, MCP `autoshield_scanner`, action `autoshield_scanner__http_get`. The separate DevOps lab uses agent `autoshield-lab-agent` and `autoshield__` tools. See [PUBLIC_SCANNER_MCP.md](PUBLIC_SCANNER_MCP.md) and [UPDATE_MCP_GATEWAY.md](UPDATE_MCP_GATEWAY.md) for arguments and lab details.
+-
+-```text
+-docker compose -f compose.yaml -f compose.fixture.yaml -f compose.motion.yaml -f compose.mcp.yaml config --quiet
+-docker compose -f compose.yaml -f compose.fixture.yaml -f compose.motion.yaml -f compose.mcp.yaml up -d --build
++```powershell
++.\start-demo.ps1 -CheckOnly    # Validate config without starting containers
++.\start-demo.ps1 -NoBuild      # Reuse previously built images
++.\start-demo.ps1 -Stop         # Stop the project; retain evidence volumes
+ ```
+ 
+-| Service | Local address |
++| Component | Local address |
+ | --- | --- |
+-| Recommended React dashboard | http://localhost:8502 |
+-| Backend API / docs | http://127.0.0.1:8010/docs |
+-| Optional legacy Streamlit UI | http://127.0.0.1:8501 |
+-| Deterministic assessment fixture | http://127.0.0.1:8090 |
++| React dashboard | http://localhost:8502 |
++| API / rule compilation endpoints | http://127.0.0.1:8010/docs |
++| Streamlit scanner | http://127.0.0.1:8501 |
++| Synthetic fixture | http://127.0.0.1:8090 |
+ | Juice Shop monitoring proxy | http://127.0.0.1:8080 |
+ | Baseline / candidate / enforcement WAF | Ports 8081 / 8082 / 8083 |
+ 
+-Open **Session**, inspect readiness, then start with `http://fixture-lab:8090/`, passive mode, 5 pages, 20 requests and 120 seconds. Acknowledge authorization. Configured keys and installed packages are prerequisites; they do not prove cloud connectivity or a matching policy. Activity shows the actual policy outcome. Missing keys, policy denials and provider failures prevent target execution.
++For the first scan, select **Session**, target `http://fixture-lab:8090/`, active mode, 5 pages, 25 requests and 120 seconds. Confirm authorization. **Activity** records scanner policy outcomes; **MCP Gateway** is a separate DevOps lab.
+ 
+-The default introduction opens the DevOps MCP lab. Select Session for web assessment. Scanner policy evidence is in Activity, not the separate DevOps lab feed.
+-
+-To stop, use the same four `-f` arguments with `down` instead of `up -d --build`. Do not add `-v` if you want to retain evidence volumes.
+-
+-## Execution boundaries
+-
+-```mermaid
+-flowchart TD
+-    UI["Session dashboard"] --> API["FastAPI scan worker"]
+-    API --> MCP["MCP stdio scanner gateway"]
+-    MCP --> ARM["ArmorIQ request decision"]
+-    ARM -->|"Explicit allow"| NET["Scope, DNS, TLS and budget checks"]
+-    ARM -->|"Deny, hold or unavailable"| STOP["Stop and preserve evidence"]
+-    NET --> TARGET["Authorized origin"]
+-    TARGET --> REPORT["Observations, hashes and reports"]
+-    REPORT --> UI
+-```
++## What the project demonstrates
+ 
+-The DevOps MCP lab is an independent service with fixed command/file/SQL capabilities. `MCP_ARMORIQ_MODE=disabled` is an explicit local-policy-only mode, never scanner bypass or proof of ArmorIQ enforcement. New installations default to `required`.
++- Bounded HTTP(S) crawling with same-origin scope, DNS pinning, public TLS validation and ArmorIQ authorization for every target GET.
++- Evidence-linked observations, two optional query probes, advisory AI review, comparison reports and exports.
++- WAF log finding → trusted proposal → deterministic rule compilation. Candidate validation and explicit promotion are separate steps.
++- MCP capability allowlists, SQL canonicalization, untrusted-log handling and durable ALLOW/BLOCK evidence.
+ 
+-## Evidence and honest coverage
++A reflected marker is not proof of XSS. A database-error signature is not proof of exploitable SQL injection. Coverage is selected OWASP 2021 heuristics, not a complete Top 10 audit. A compiled rule is not a deployed patch. This is a local, single-operator lab.
+ 
+-- Selected OWASP 2021 response heuristics; active mode adds reflection and database-error query probes.
+-- Same-origin crawling, DNS address pinning, private/reserved-IP restrictions, public TLS verification, cancellation and bounded requests/time.
+-- Saved timelines, policy outcomes, response hashes, JSON/HTML reports and scan comparisons.
+-- Repeated header observations are grouped in the React view; per-page findings and IDs remain in exports.
+-- A confirmed observation is not confirmed exploitability. Reflection is not proof of XSS; an error signature is not proof of exploitable SQL injection.
+-- No browser JavaScript, authenticated crawl, full OWASP Top 10 audit, arbitrary exploitation or multi-tenant authentication.
+-- A policy block stops the scan, so findings may be incomplete. No findings does not establish security.
++## Documentation and checks
+ 
+-The WAF lab is a separate validation/promotion workflow; the web scanner does not automatically patch arbitrary scanned sites.
+-
+-## Verify locally
++- [Setup, policies and troubleshooting](docs/SETUP.md)
++- [3-minute demo checklist and exact WAF commands](docs/DEMO_SCRIPT.md)
++- [Architecture and component boundaries](docs/ARCHITECTURE.md)
++- [Portability, tests and patch notes](docs/FINAL_REVIEW.md)
++- [Documentation index and historical updates](docs/README.md)
+ 
+ ```text
+ python -m pip install -r requirements-dev.txt -r backend/requirements-mcp.txt
+-python -m unittest discover -s tests -p "test_scan*.py"
+-python -m unittest discover -s tests -p "test_detector.py"
+-python -m unittest discover -s tests -p "test_mcp_gateway.py"
+-```
+-
+-```text
+-cd motion-ui
+-npm ci
+-node --test src/api.test.js src/findings.test.js
+-npm run build
++python -m unittest discover -s tests -v
+ ```
+ 
+-Final-touch verification: **96 Python tests and 6 frontend tests passed; React production build passed.** Python coverage includes real MCP stdio and local HTTP fixture execution with test-only cloud stubs, fail-closed behavior, scope checks and readiness. Docker/WAF integration, live ArmorIQ console policies and the PowerShell updater still require operator verification. OpenSSL is needed for the HTTPS fixture regression.
+-
+-## Demo and update
+-
+-Follow [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for a short evidence-led recording. [FINAL_TOUCHES.md](FINAL_TOUCHES.md) lists changes and remaining live checks. Existing installations can use `Apply-Update.ps1` after extracting separately; the updater backs up replaced files and preserves `.env` and Compose customizations. Add the new environment settings manually and rebuild.
+-
+-Never commit `.env`, API keys or runtime databases. Example keys are blank. Keep this deployment local; public hosting needs an authentication and per-user authorization design.
++Native Windows executor tests need Git for Windows (Git Bash); production tools execute inside Linux containers. Docker-dependent WAF tests live separately in `tests/integration`. Keep `.env` and generated databases out of Git.
+diff --git a/SCANNER_GATEWAY_UPDATE.json b/SCANNER_GATEWAY_UPDATE.json
+deleted file mode 100644
+index df2ec8d..0000000
+--- a/SCANNER_GATEWAY_UPDATE.json
++++ /dev/null
+@@ -1,38 +0,0 @@
+-{
+-  "files": [
+-    "PUBLIC_SCANNER_MCP.md",
+-    "README.md",
+-    "SCANNER_GUIDE.md",
+-    "SCANNER_REFACTOR.md",
+-    "backend/Dockerfile",
+-    "backend/requirements.txt",
+-    "backend/scan_api.py",
+-    "backend/scan_engine.py",
+-    "backend/scan_gateway_policy.py",
+-    "backend/scan_mcp_client.py",
+-    "backend/scan_mcp_server.py",
+-    "frontend/scanner_ui.py",
+-    "motion-ui/src/main.jsx",
+-    "tests/test_scan_authorization.py",
+-    "tests/test_scan_mcp.py",
+-    ".env.example",
+-    "DEMO_SCRIPT.md",
+-    "FINAL_TOUCHES.md",
+-    "backend/mcp_armoriq.py",
+-    "backend/mcp_server.py",
+-    "motion-ui/src/McpGateway.jsx",
+-    "motion-ui/src/style.css",
+-    "motion-ui/src/findings.js",
+-    "motion-ui/src/findings.test.js",
+-    "tests/test_scan_readiness.py",
+-    "tests/test_mcp_gateway.py",
+-    ".gitignore"
+-  ],
+-  "preserve": [
+-    ".env",
+-    "compose.yaml",
+-    "compose.fixture.yaml",
+-    "compose.motion.yaml",
+-    "compose.mcp.yaml"
+-  ]
+-}
+diff --git a/backend/Dockerfile.mcp b/backend/Dockerfile.mcp
+index 9dc81d5..22ee62d 100644
+--- a/backend/Dockerfile.mcp
++++ b/backend/Dockerfile.mcp
+@@ -1,6 +1,6 @@
+ FROM python:3.12-slim
+ WORKDIR /app
+-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
++ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MCP_WORKSPACE=/workspace
+ COPY requirements-mcp.txt .
+ RUN pip install --no-cache-dir -r requirements-mcp.txt \
+     && useradd --uid 10001 --create-home appuser \
+diff --git a/backend/mcp_armoriq.py b/backend/mcp_armoriq.py
+index 7503040..e4a7e8b 100644
+--- a/backend/mcp_armoriq.py
++++ b/backend/mcp_armoriq.py
+@@ -6,15 +6,16 @@ class ArmorGate:
+     def __init__(self, run_id):
+         self.client = self.session = self.token = None
+         self.state = "disabled"
+-        mode = os.getenv("MCP_ARMORIQ_MODE", "required")
++        mode = os.getenv("MCP_ARMORIQ_MODE", "required").strip().lower()
+         if mode == "disabled":
+             return
+-        if mode != "required" or not os.getenv("ARMORIQ_API_KEY"):
++        key = os.getenv("ARMORIQ_API_KEY", "").strip()
++        if mode != "required" or not key:
+             self.state = "unavailable"
+             return
+         try:
+             from armoriq_sdk import ArmorIQClient, SessionOptions
+-            self.client = ArmorIQClient(api_key=os.environ["ARMORIQ_API_KEY"],
++            self.client = ArmorIQClient(api_key=key,
+                 agent_id="autoshield-lab-agent", user_id="local-lab-operator", context_id=run_id,
+                 timeout=8, max_retries=0)
+             self.session = self.client.start_session(SessionOptions(mode="sdk", validity_seconds=300))
+@@ -24,6 +25,7 @@ class ArmorGate:
+         except Exception:
+             # Provider exception strings may contain credentials or raw payloads.
+             self.state = "unavailable"
++            self.close()
+     def check(self, tool, args):
+         if self.state == "disabled":
+             return True, {"status": "disabled", "reason": "Local policy only; ArmorIQ not connected"}
+@@ -31,8 +33,9 @@ class ArmorGate:
+             return False, {"status": "unavailable", "reason": "ArmorIQ required but unavailable; execution denied"}
+         try:
+             result = self.session.check("autoshield__" + tool, args)
+-            allowed = result.allowed is True and result.action == "allow"
+-            action = result.action if result.action in ("allow", "block", "hold") else "invalid"
++            raw_action = getattr(result.action, "value", result.action)
++            action = raw_action if raw_action in ("allow", "block", "hold") else "invalid"
++            allowed = result.allowed is True and action == "allow"
+             return allowed, {"status": action, "reason": "ArmorIQ enforcement: " + action}
+         except Exception:
+             return False, {"status": "unavailable", "reason": "ArmorIQ enforcement failed; execution denied"}
+@@ -48,15 +51,18 @@ class ArmorGate:
+         return "not_submitted"
+     def close(self):
+         state = "not_applicable"
+-        if self.client and self.token:
++        client, session, token = self.client, self.session, self.token
++        self.client = self.session = self.token = None
++        self.state = "unavailable"
++        if client and token:
+             try:
+-                self.client.complete_plan(self.token.plan_id)
++                client.complete_plan(token.plan_id)
+                 state = "completed"
+             except Exception:
+                 state = "completion_failed"
+-        if self.session:
++        if session:
+             try:
+-                self.session.close()
++                session.close()
+             except Exception:
+                 pass
+         return state
+diff --git a/backend/mcp_executor.py b/backend/mcp_executor.py
+index efbc03d..011d2f7 100644
+--- a/backend/mcp_executor.py
++++ b/backend/mcp_executor.py
+@@ -1,7 +1,8 @@
+-"""Real operations on disposable demo resources, never host resources."""
++"""Bounded lab operations. Use the Linux gateway container for isolation."""
+ import json
+ import os
+ from pathlib import Path
++import shlex
+ import shutil
+ import sqlite3
+ import subprocess
+@@ -10,6 +11,69 @@ from mcp_policy import COMMANDS, FILES, evaluate
+ 
+ LAB = Path(__file__).parent / "mcp_lab"
+ 
++def workspace_path():
++    """Operator setting only. Native tests use the bundled disposable lab."""
++    configured = os.getenv("MCP_WORKSPACE", "").strip()
++    workspace = Path(configured).expanduser() if configured else LAB
++    workspace = workspace.resolve()
++    if not workspace.is_dir():
++        raise RuntimeError("MCP_WORKSPACE must name an existing lab directory")
++    return workspace
++
++
++def bash_path():
++    """Prefer Linux Bash in containers and Git Bash (not WSL) on Windows."""
++    configured = os.getenv("MCP_BASH_PATH", "").strip()
++    if configured:
++        candidate = Path(configured).expanduser()
++        if not candidate.is_absolute() or candidate.name.lower() not in ("bash", "bash.exe") or not candidate.is_file():
++            raise RuntimeError("MCP_BASH_PATH must be an absolute path to Bash")
++        candidates = [candidate]
++    elif os.name == "nt":
++        candidates = [Path(os.getenv("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe",
++                      Path(os.getenv("ProgramFiles(x86)", "C:/Program Files (x86)")) / "Git/bin/bash.exe"]
++        if os.getenv("LOCALAPPDATA"):
++            candidates.append(Path(os.environ["LOCALAPPDATA"]) / "Programs/Git/bin/bash.exe")
++        git = shutil.which("git")
++        if git:
++            candidates.append(Path(git).resolve().parent.parent / "bin/bash.exe")
++        found = shutil.which("bash")
++        if found:
++            candidates.append(Path(found))
++    else:
++        candidates = [Path("/bin/bash")]
++        found = shutil.which("bash")
++        if found:
++            candidates.append(Path(found))
++    for candidate in candidates:
++        if candidate.is_absolute() and candidate.is_file():
++            # System32's Bash is a WSL launcher, which changes path/env semantics.
++            if os.name == "nt" and any(part.lower() in ("system32", "windowsapps") for part in candidate.parts):
++                continue
++            return candidate.resolve()
++    raise RuntimeError("Bash unavailable: install Git for Windows or set MCP_BASH_PATH to Git Bash")
++
++
++def command_environment(bash):
++    """No API keys, BASH_ENV or inherited shell startup settings."""
++    if os.name == "nt":
++        directories = [bash.parent, bash.parent.parent / "usr/bin"]
++        environment = {key: os.environ[key] for key in ("SystemRoot", "WINDIR", "TEMP", "TMP") if key in os.environ}
++    else:
++        directories = [Path("/usr/bin"), Path("/bin")]
++        environment = {}
++    environment.update(PATH=os.pathsep.join(str(p) for p in directories), LANG="C", LC_ALL="C")
++    return environment
++
++
++def kernel_uptime():
++    if os.name == "nt":
++        import ctypes
++        ticks = ctypes.WinDLL("kernel32", use_last_error=True).GetTickCount64
++        ticks.restype = ctypes.c_ulonglong
++        return ticks() / 1000.0
++    return float(Path("/proc/uptime").read_text().split()[0])
++
+ class NoRedirects(HTTPRedirectHandler):
+     def redirect_request(self, *args, **kwargs):
+         return None
+@@ -20,9 +84,9 @@ def execute(tool, arguments):
+         raise PermissionError("Executor requires canonical policy-approved arguments")
+     if tool == "read_system_metrics":
+         if arguments["metric_name"] == "disk":
+-            disk = shutil.disk_usage(os.getenv("MCP_WORKSPACE", "/workspace"))
+-            return {"scope": "container filesystem", "total_bytes": disk.total, "free_bytes": disk.free}
+-        return {"scope": "container-visible kernel uptime", "seconds": float(Path("/proc/uptime").read_text().split()[0])}
++            disk = shutil.disk_usage(workspace_path())
++            return {"scope": "lab workspace filesystem", "total_bytes": disk.total, "free_bytes": disk.free}
++        return {"scope": "OS kernel uptime; container-visible on Linux", "seconds": kernel_uptime()}
+     if tool == "read_lab_file":
+         path = LAB / arguments["path"]
+         if path.is_symlink() or path.resolve().parent != LAB.resolve() or path.name not in FILES:
+@@ -43,10 +107,16 @@ def execute(tool, arguments):
+             rows = db.execute(arguments["sql_query"]).fetchmany(20)
+             return {"rows": [{"name": r[0], "status": r[1]} for r in rows], "database": "synthetic in-memory lab"}
+     if tool == "run_system_command":
+-        result = subprocess.run(["/bin/bash", "--noprofile", "--norc", "-c", COMMANDS[arguments["command_str"]]],
+-            shell=False, cwd=os.getenv("MCP_WORKSPACE", "/workspace"), env={"PATH": "/usr/bin:/bin", "LANG": "C"},
+-            capture_output=True, text=True, timeout=3, check=False)
+-        return {"exit_code": result.returncode, "stdout": result.stdout[:4096], "stderr": result.stderr[:1024], "scope": "gateway container"}
++        bash, workspace = bash_path(), workspace_path()
++        command = COMMANDS[arguments["command_str"]]
++        if command == "pwd" and os.name == "nt":
++            command = "pwd -W"  # Git Bash prints C:/... instead of /c/... .
++        elif command == "df -h /workspace":
++            command = "df -h -- " + shlex.quote(workspace.as_posix())
++        result = subprocess.run([str(bash), "--noprofile", "--norc", "-c", command],
++            shell=False, cwd=workspace, env=command_environment(bash),
++            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3, check=False)
++        return {"exit_code": result.returncode, "stdout": result.stdout[:4096], "stderr": result.stderr[:1024], "scope": "operator-configured lab workspace"}
+     if tool == "invoke_lab_api":
+         # No model-controlled host, URL, method, headers, or redirect destination.
+         with build_opener(NoRedirects()).open(Request("http://fixture-lab:8090/health"), timeout=3) as response:
+diff --git a/backend/mcp_lab/Dockerfile.mcp b/backend/mcp_lab/Dockerfile.mcp
+index 9dc81d5..22ee62d 100644
+--- a/backend/mcp_lab/Dockerfile.mcp
++++ b/backend/mcp_lab/Dockerfile.mcp
+@@ -1,6 +1,6 @@
+ FROM python:3.12-slim
+ WORKDIR /app
+-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
++ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MCP_WORKSPACE=/workspace
+ COPY requirements-mcp.txt .
+ RUN pip install --no-cache-dir -r requirements-mcp.txt \
+     && useradd --uid 10001 --create-home appuser \
+diff --git a/compose.fixture.yaml b/compose.fixture.yaml
+index f7c2121..920772e 100644
+--- a/compose.fixture.yaml
++++ b/compose.fixture.yaml
+@@ -1,7 +1,7 @@
+ services:
+   backend:
+     environment:
+-      AUTOSHIELD_LAB_ORIGINS: http://proxy,http://fixture-lab:8090
++      AUTOSHIELD_LAB_ORIGINS: ${AUTOSHIELD_LAB_ORIGINS:-http://proxy,http://fixture-lab:8090}
+   fixture-lab:
+     build: ./fixture-lab
+     ports:
+diff --git a/compose.mcp.yaml b/compose.mcp.yaml
+index 44c27bf..c5351b3 100644
+--- a/compose.mcp.yaml
++++ b/compose.mcp.yaml
+@@ -11,6 +11,9 @@ services:
+       MCP_ARMORIQ_MODE: ${MCP_ARMORIQ_MODE:-required}
+       MCP_SEMANTIC_MODE: ${MCP_SEMANTIC_MODE:-disabled}
+       MCP_AUDIT_DB: /data/mcp-audit.db
++    depends_on:
++      fixture-lab:
++        condition: service_healthy
+     volumes:
+       - mcp_audit:/data
+     read_only: true
+diff --git a/compose.yaml b/compose.yaml
+index 3d76ae7..89c38f3 100644
+--- a/compose.yaml
++++ b/compose.yaml
+@@ -7,6 +7,7 @@ services:
+     env_file:
+       - ./.env
+     environment:
++      ARMORIQ_API_KEY: ${ARMORIQ_API_KEY:-}
+       AUTOSHIELD_LAB_ORIGINS: ${AUTOSHIELD_LAB_ORIGINS:-http://proxy}
+     volumes:
+       - proxy_logs:/logs:ro
+@@ -159,4 +160,4 @@ networks:
+ 
+ volumes:
+   proxy_logs:
+-  backend_data:
+\ No newline at end of file
++  backend_data:
+diff --git a/deploy_lab.py b/deploy_lab.py
+index afc4c8e..e887663 100644
+--- a/deploy_lab.py
++++ b/deploy_lab.py
+@@ -1,432 +1,432 @@
+-import argparse
+-import hashlib
+-import json
+-import os
+-import subprocess
+-import sys
+-import time
+-import uuid
+-from datetime import datetime, timezone
+-from pathlib import Path
+-from urllib.error import HTTPError
+-from urllib.parse import parse_qs, urlencode, urlsplit
+-from urllib.request import (
+-    HTTPRedirectHandler,
+-    ProxyHandler,
+-    Request,
+-    build_opener,
+-)
+-
+-
+-ROOT = Path(__file__).resolve().parent
+-DEPLOYMENT = ROOT / "deployment"
+-ACTIVE = DEPLOYMENT / "active.conf"
+-STATE = DEPLOYMENT / "state.json"
+-LOCK = DEPLOYMENT / "controller.lock"
+-
+-API = "http://127.0.0.1:8000"
+-PROTECTED = "http://127.0.0.1:8083"
+-
+-CANDIDATE_RULE_PATH = (
+-    "/etc/modsecurity.d/owasp-crs/rules/"
+-    "REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"
+-)
+-
+-BASELINE_CONTENT = b"# AutoShield initial state: baseline CRS only.\n"
+-
+-
+-class NoRedirects(HTTPRedirectHandler):
+-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+-        return None
+-
+-
+-OPENER = build_opener(ProxyHandler({}), NoRedirects())
+-
+-
+-def now():
+-    return datetime.now(timezone.utc).isoformat()
+-
+-
+-def digest(content):
+-    return hashlib.sha256(content).hexdigest()
+-
+-
+-def api_get(path):
+-    with OPENER.open(API + path, timeout=10) as response:
+-        return json.load(response)
+-
+-
+-def docker(*args):
+-    result = subprocess.run(
+-        ["docker", *args],
+-        cwd=ROOT,
+-        capture_output=True,
+-        text=True,
+-        encoding="utf-8",
+-        errors="replace",
+-        timeout=30,
+-    )
+-
+-    if result.returncode:
+-        raise RuntimeError(result.stdout + "\n" + result.stderr)
+-
+-    return result.stdout, result.stderr
+-
+-
+-def container_id(service):
+-    output, _ = docker("compose", "ps", "-q", service)
+-    value = output.strip()
+-
+-    if not value:
+-        raise RuntimeError(f"{service} is not running")
+-
+-    return value
+-
+-
+-def atomic_write(path, content):
+-    temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
+-
+-    try:
+-        with temporary.open("wb") as file:
+-            file.write(content)
+-            file.flush()
+-            os.fsync(file.fileno())
+-
+-        os.replace(temporary, path)
+-
+-    finally:
+-        temporary.unlink(missing_ok=True)
+-
+-
+-def save_state(state):
+-    atomic_write(
+-        STATE,
+-        json.dumps(state, indent=2).encode("utf-8"),
+-    )
+-
+-
+-def http_status(query):
+-    request = Request(
+-        PROTECTED + "/rest/products/search?" + urlencode(query),
+-        headers={
+-            "User-Agent": "AutoShield-Lab-Deployment/0.1",
+-            "Connection": "close",
+-        },
+-    )
+-
+-    try:
+-        with OPENER.open(request, timeout=5) as response:
+-            return response.status
+-
+-    except HTTPError as exc:
+-        code = exc.code
+-        exc.close()
+-        return code
+-
+-
+-def verify_runtime(cid, expected_ids):
+-    # Verify normal traffic through fresh connections.
+-    for query in ("apple", "banana"):
+-        if http_status({"q": query}) != 200:
+-            raise RuntimeError(f"Normal request failed: {query}")
+-
+-    # Correlate a new blocking probe with its exact audit transaction.
+-    started = now()
+-    probe_id = uuid.uuid4().hex
+-
+-    code = http_status({
+-        "q": "' OR 1=1--",
+-        "_autoshield_deploy_probe": probe_id,
+-    })
+-
+-    if code != 403:
+-        raise RuntimeError(f"Blocking probe returned HTTP {code}")
+-
+-    expected = {str(value) for value in expected_ids}
+-
+-    for _ in range(5):
+-        stdout, stderr = docker("logs", "--since", started, cid)
+-
+-        for line in (stdout + "\n" + stderr).splitlines():
+-            try:
+-                audit = json.loads(line)
+-            except ValueError:
+-                continue
+-
+-            if not isinstance(audit, dict):
+-                continue
+-
+-            transaction = audit.get("transaction", {})
+-            uri = transaction.get("request", {}).get("uri", "")
+-            parameters = parse_qs(urlsplit(uri).query)
+-
+-            if parameters.get("_autoshield_deploy_probe") != [probe_id]:
+-                continue
+-
+-            messages = transaction.get("messages", [])
+-            ids = {
+-                str(item.get("details", {}).get("ruleId"))
+-                for item in messages
+-            }
+-
+-            has_autoshield_message = any(
+-                str(item.get("message", "")).startswith(
+-                    "AutoShield candidate "
+-                )
+-                for item in messages
+-            )
+-
+-            blocked = (
+-                transaction.get("is_interrupted") is True
+-                and transaction.get("response", {}).get("http_code") == 403
+-            )
+-
+-            # Baseline rollback must not retain an AutoShield match
+-            # on this probe.
+-            correct_rule = (
+-                bool(ids & expected)
+-                if expected
+-                else not has_autoshield_message
+-            )
+-
+-            if blocked and correct_rule:
+-                return {
+-                    "probe_id": probe_id,
+-                    "transaction_id": transaction.get("unique_id"),
+-                    "matched_rule_ids": sorted(ids),
+-                    "verified_at": now(),
+-                }
+-
+-        time.sleep(0.5)
+-
+-    raise RuntimeError("Expected runtime rule attribution was not observed")
+-
+-
+-def reload_and_verify(cid, expected_ids):
+-    docker("exec", cid, "nginx", "-t")
+-    docker("exec", cid, "nginx", "-s", "reload")
+-
+-    # Reload acknowledgment is not proof that new workers are ready.
+-    last_error = None
+-
+-    for _ in range(4):
+-        try:
+-            return verify_runtime(cid, expected_ids)
+-        except Exception as exc:
+-            last_error = exc
+-            time.sleep(1)
+-
+-    raise RuntimeError(f"Post-reload verification failed: {last_error}")
+-
+-
+-def rollback(state):
+-    state["status"] = "rolling_back"
+-    save_state(state)
+-
+-    backup = DEPLOYMENT / state["backup_file"]
+-    previous = backup.read_bytes()
+-
+-    if digest(previous) != state["previous_sha256"]:
+-        raise RuntimeError("Backup hash mismatch; rollback stopped")
+-
+-    cid = container_id("enforcement-waf")
+-    atomic_write(ACTIVE, previous)
+-
+-    state["rollback_evidence"] = reload_and_verify(cid, [])
+-    state["status"] = "rolled_back"
+-    state["rolled_back_at"] = now()
+-    save_state(state)
+-
+-    print("Rollback verified: baseline CRS restored.")
+-
+-
+-def promote(run_id):
+-    if STATE.exists():
+-        current_state = json.loads(STATE.read_text(encoding="utf-8"))
+-
+-        if current_state.get("status") != "rolled_back":
+-            raise RuntimeError(
+-                "A deployment is active or incomplete. "
+-                "Run rollback before another promotion."
+-            )
+-
+-    # This first controller supports baseline -> proposal -> baseline.
+-    previous = ACTIVE.read_bytes()
+-
+-    if previous != BASELINE_CONTENT:
+-        raise RuntimeError(
+-            "Expected the initial baseline-only active.conf. "
+-            "Do not overwrite it manually; inspect deployment state."
+-        )
+-
+-    history = api_get("/validations?limit=100")["validation_runs"]
+-    run = next((item for item in history if item["id"] == run_id), None)
+-
+-    if run is None:
+-        raise RuntimeError("Validation run not found in the latest 100 runs")
+-
+-    report = run["report"]
+-    cases = report.get("cases", [])
+-    counts = report.get("counts", {})
+-
+-    if (
+-        len(cases) != 8
+-        or run["status"] != "review_required"
+-        or counts.get("pass", 0) < 7
+-        or any(
+-            case.get("verdict") not in ("pass", "known_application_issue")
+-            for case in cases
+-        )
+-        or any(
+-            case.get("verdict") == "known_application_issue"
+-            and case.get("case") != "known_apostrophe_issue"
+-            for case in cases
+-        )
+-    ):
+-        raise RuntimeError("Validation run is not eligible for this lab demo")
+-
+-    proposal_id = run["proposal_id"]
+-    compiled = api_get(f"/proposals/{proposal_id}/compiled")
+-    content = compiled["content"].encode("utf-8")
+-
+-    if digest(content) != run["compiled_sha256"]:
+-        raise RuntimeError("Compiled rule differs from the validation run")
+-
+-    # This probe suite currently supports the numeric-tautology template.
+-    proposal = api_get("/proposals?limit=100")["proposals"]
+-    selected = next(
+-        (item for item in proposal if item["id"] == proposal_id),
+-        None,
+-    )
+-
+-    if (
+-        selected is None
+-        or selected["policy"]["template_ids"]
+-        != ["search_numeric_tautology_v1"]
+-    ):
+-        raise RuntimeError("This lab controller supports numeric SQLi only")
+-
+-    evidence = api_get(f"/validations/{run_id}/evidence")["evidence"]
+-
+-    if not any(
+-        item["report"].get("candidate_match_verified") is True
+-        and item["report"].get("expected_compiled_sha256")
+-        == run["compiled_sha256"]
+-        for item in evidence
+-    ):
+-        raise RuntimeError("Matching attached probe evidence is missing")
+-
+-    candidate = container_id("candidate-waf")
+-    enforcement = container_id("enforcement-waf")
+-
+-    candidate_info = json.loads(docker("inspect", candidate)[0])[0]
+-    enforcement_info = json.loads(docker("inspect", enforcement)[0])[0]
+-
+-    if candidate_info["Image"] != enforcement_info["Image"]:
+-        raise RuntimeError("Candidate and enforcement image IDs differ")
+-
+-    candidate_hash = docker(
+-        "exec", candidate, "sha256sum", CANDIDATE_RULE_PATH
+-    )[0].split()[0]
+-
+-    if candidate_hash != run["compiled_sha256"]:
+-        raise RuntimeError("Current candidate rule file differs from validation")
+-
+-    # Confirm the current baseline works before changing its rule file.
+-    docker("exec", enforcement, "nginx", "-t")
+-    verify_runtime(enforcement, [])
+-
+-    deployment_id = uuid.uuid4().hex
+-    backup_name = f"backup-{deployment_id}.conf"
+-
+-    with (DEPLOYMENT / backup_name).open("xb") as file:
+-        file.write(previous)
+-        file.flush()
+-        os.fsync(file.fileno())
+-
+-    state = {
+-        "deployment_id": deployment_id,
+-        "mode": "local_lab_demo",
+-        "status": "prepared",
+-        "validation_run_id": run_id,
+-        "proposal_id": proposal_id,
+-        "previous_sha256": digest(previous),
+-        "candidate_sha256": digest(content),
+-        "backup_file": backup_name,
+-        "created_at": now(),
+-        "production_ready": False,
+-    }
+-
+-    save_state(state)
+-
+-    try:
+-        atomic_write(ACTIVE, content)
+-
+-        state["promotion_evidence"] = reload_and_verify(
+-            enforcement,
+-            compiled["rule_ids"],
+-        )
+-
+-        state["status"] = "active"
+-        state["activated_at"] = now()
+-        save_state(state)
+-
+-        print("Lab promotion verified on port 8083.")
+-        print(json.dumps(state, indent=2))
+-
+-    except Exception as exc:
+-        state["promotion_error"] = str(exc)
+-        save_state(state)
+-        print(f"Promotion failed: {exc}\nRestoring baseline...")
+-        rollback(state)
+-        raise RuntimeError("Promotion failed; baseline rollback was verified")
+-
+-
+-def main():
+-    parser = argparse.ArgumentParser()
+-    parser.add_argument("action", choices=["promote", "rollback"])
+-    parser.add_argument("--run-id", type=int)
+-    parser.add_argument("--lab-demo", action="store_true")
+-    args = parser.parse_args()
+-
+-    if not args.lab_demo:
+-        parser.error("Use --lab-demo: this controller is for the local lab")
+-
+-    if args.action == "promote" and args.run_id is None:
+-        parser.error("Promotion requires --run-id")
+-
+-    DEPLOYMENT.mkdir(exist_ok=True)
+-
+-    try:
+-        lock_fd = os.open(
+-            LOCK,
+-            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+-        )
+-    except FileExistsError:
+-        raise RuntimeError(
+-            "Controller lock exists. Check whether another deployment "
+-            "is running before investigating recovery."
+-        )
+-
+-    os.close(lock_fd)
+-
+-    try:
+-        if args.action == "promote":
+-            promote(args.run_id)
+-        else:
+-            if not STATE.exists():
+-                raise RuntimeError("No deployment state exists")
+-
+-            state = json.loads(STATE.read_text(encoding="utf-8"))
+-            rollback(state)
+-
+-    finally:
+-        LOCK.unlink(missing_ok=True)
+-
+-
+-if __name__ == "__main__":
+-    try:
+-        main()
+-    except Exception as exc:
+-        print(f"Controller error: {exc}", file=sys.stderr)
++import argparse
++import hashlib
++import json
++import os
++import subprocess
++import sys
++import time
++import uuid
++from datetime import datetime, timezone
++from pathlib import Path
++from urllib.error import HTTPError
++from urllib.parse import parse_qs, urlencode, urlsplit
++from urllib.request import (
++    HTTPRedirectHandler,
++    ProxyHandler,
++    Request,
++    build_opener,
++)
++
++
++ROOT = Path(__file__).resolve().parent
++DEPLOYMENT = ROOT / "deployment"
++ACTIVE = DEPLOYMENT / "active.conf"
++STATE = DEPLOYMENT / "state.json"
++LOCK = DEPLOYMENT / "controller.lock"
++
++API = "http://127.0.0.1:8010"
++PROTECTED = "http://127.0.0.1:8083"
++
++CANDIDATE_RULE_PATH = (
++    "/etc/modsecurity.d/owasp-crs/rules/"
++    "REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"
++)
++
++BASELINE_CONTENT = b"# AutoShield initial state: baseline CRS only.\n"
++
++
++class NoRedirects(HTTPRedirectHandler):
++    def redirect_request(self, req, fp, code, msg, headers, newurl):
++        return None
++
++
++OPENER = build_opener(ProxyHandler({}), NoRedirects())
++
++
++def now():
++    return datetime.now(timezone.utc).isoformat()
++
++
++def digest(content):
++    return hashlib.sha256(content).hexdigest()
++
++
++def api_get(path):
++    with OPENER.open(API + path, timeout=10) as response:
++        return json.load(response)
++
++
++def docker(*args):
++    result = subprocess.run(
++        ["docker", *args],
++        cwd=ROOT,
++        capture_output=True,
++        text=True,
++        encoding="utf-8",
++        errors="replace",
++        timeout=30,
++    )
++
++    if result.returncode:
++        raise RuntimeError(result.stdout + "\n" + result.stderr)
++
++    return result.stdout, result.stderr
++
++
++def container_id(service):
++    output, _ = docker("compose", "ps", "-q", service)
++    value = output.strip()
++
++    if not value:
++        raise RuntimeError(f"{service} is not running")
++
++    return value
++
++
++def atomic_write(path, content):
++    temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
++
++    try:
++        with temporary.open("wb") as file:
++            file.write(content)
++            file.flush()
++            os.fsync(file.fileno())
++
++        os.replace(temporary, path)
++
++    finally:
++        temporary.unlink(missing_ok=True)
++
++
++def save_state(state):
++    atomic_write(
++        STATE,
++        json.dumps(state, indent=2).encode("utf-8"),
++    )
++
++
++def http_status(query):
++    request = Request(
++        PROTECTED + "/rest/products/search?" + urlencode(query),
++        headers={
++            "User-Agent": "AutoShield-Lab-Deployment/0.1",
++            "Connection": "close",
++        },
++    )
++
++    try:
++        with OPENER.open(request, timeout=5) as response:
++            return response.status
++
++    except HTTPError as exc:
++        code = exc.code
++        exc.close()
++        return code
++
++
++def verify_runtime(cid, expected_ids):
++    # Verify normal traffic through fresh connections.
++    for query in ("apple", "banana"):
++        if http_status({"q": query}) != 200:
++            raise RuntimeError(f"Normal request failed: {query}")
++
++    # Correlate a new blocking probe with its exact audit transaction.
++    started = now()
++    probe_id = uuid.uuid4().hex
++
++    code = http_status({
++        "q": "' OR 1=1--",
++        "_autoshield_deploy_probe": probe_id,
++    })
++
++    if code != 403:
++        raise RuntimeError(f"Blocking probe returned HTTP {code}")
++
++    expected = {str(value) for value in expected_ids}
++
++    for _ in range(5):
++        stdout, stderr = docker("logs", "--since", started, cid)
++
++        for line in (stdout + "\n" + stderr).splitlines():
++            try:
++                audit = json.loads(line)
++            except ValueError:
++                continue
++
++            if not isinstance(audit, dict):
++                continue
++
++            transaction = audit.get("transaction", {})
++            uri = transaction.get("request", {}).get("uri", "")
++            parameters = parse_qs(urlsplit(uri).query)
++
++            if parameters.get("_autoshield_deploy_probe") != [probe_id]:
++                continue
++
++            messages = transaction.get("messages", [])
++            ids = {
++                str(item.get("details", {}).get("ruleId"))
++                for item in messages
++            }
++
++            has_autoshield_message = any(
++                str(item.get("message", "")).startswith(
++                    "AutoShield candidate "
++                )
++                for item in messages
++            )
++
++            blocked = (
++                transaction.get("is_interrupted") is True
++                and transaction.get("response", {}).get("http_code") == 403
++            )
++
++            # Baseline rollback must not retain an AutoShield match
++            # on this probe.
++            correct_rule = (
++                bool(ids & expected)
++                if expected
++                else not has_autoshield_message
++            )
++
++            if blocked and correct_rule:
++                return {
++                    "probe_id": probe_id,
++                    "transaction_id": transaction.get("unique_id"),
++                    "matched_rule_ids": sorted(ids),
++                    "verified_at": now(),
++                }
++
++        time.sleep(0.5)
++
++    raise RuntimeError("Expected runtime rule attribution was not observed")
++
++
++def reload_and_verify(cid, expected_ids):
++    docker("exec", cid, "nginx", "-t")
++    docker("exec", cid, "nginx", "-s", "reload")
++
++    # Reload acknowledgment is not proof that new workers are ready.
++    last_error = None
++
++    for _ in range(4):
++        try:
++            return verify_runtime(cid, expected_ids)
++        except Exception as exc:
++            last_error = exc
++            time.sleep(1)
++
++    raise RuntimeError(f"Post-reload verification failed: {last_error}")
++
++
++def rollback(state):
++    state["status"] = "rolling_back"
++    save_state(state)
++
++    backup = DEPLOYMENT / state["backup_file"]
++    previous = backup.read_bytes()
++
++    if digest(previous) != state["previous_sha256"]:
++        raise RuntimeError("Backup hash mismatch; rollback stopped")
++
++    cid = container_id("enforcement-waf")
++    atomic_write(ACTIVE, previous)
++
++    state["rollback_evidence"] = reload_and_verify(cid, [])
++    state["status"] = "rolled_back"
++    state["rolled_back_at"] = now()
++    save_state(state)
++
++    print("Rollback verified: baseline CRS restored.")
++
++
++def promote(run_id):
++    if STATE.exists():
++        current_state = json.loads(STATE.read_text(encoding="utf-8"))
++
++        if current_state.get("status") != "rolled_back":
++            raise RuntimeError(
++                "A deployment is active or incomplete. "
++                "Run rollback before another promotion."
++            )
++
++    # This first controller supports baseline -> proposal -> baseline.
++    previous = ACTIVE.read_bytes()
++
++    if previous != BASELINE_CONTENT:
++        raise RuntimeError(
++            "Expected the initial baseline-only active.conf. "
++            "Do not overwrite it manually; inspect deployment state."
++        )
++
++    history = api_get("/validations?limit=100")["validation_runs"]
++    run = next((item for item in history if item["id"] == run_id), None)
++
++    if run is None:
++        raise RuntimeError("Validation run not found in the latest 100 runs")
++
++    report = run["report"]
++    cases = report.get("cases", [])
++    counts = report.get("counts", {})
++
++    if (
++        len(cases) != 8
++        or run["status"] != "review_required"
++        or counts.get("pass", 0) < 7
++        or any(
++            case.get("verdict") not in ("pass", "known_application_issue")
++            for case in cases
++        )
++        or any(
++            case.get("verdict") == "known_application_issue"
++            and case.get("case") != "known_apostrophe_issue"
++            for case in cases
++        )
++    ):
++        raise RuntimeError("Validation run is not eligible for this lab demo")
++
++    proposal_id = run["proposal_id"]
++    compiled = api_get(f"/proposals/{proposal_id}/compiled")
++    content = compiled["content"].encode("utf-8")
++
++    if digest(content) != run["compiled_sha256"]:
++        raise RuntimeError("Compiled rule differs from the validation run")
++
++    # This probe suite currently supports the numeric-tautology template.
++    proposal = api_get("/proposals?limit=100")["proposals"]
++    selected = next(
++        (item for item in proposal if item["id"] == proposal_id),
++        None,
++    )
++
++    if (
++        selected is None
++        or selected["policy"]["template_ids"]
++        != ["search_numeric_tautology_v1"]
++    ):
++        raise RuntimeError("This lab controller supports numeric SQLi only")
++
++    evidence = api_get(f"/validations/{run_id}/evidence")["evidence"]
++
++    if not any(
++        item["report"].get("candidate_match_verified") is True
++        and item["report"].get("expected_compiled_sha256")
++        == run["compiled_sha256"]
++        for item in evidence
++    ):
++        raise RuntimeError("Matching attached probe evidence is missing")
++
++    candidate = container_id("candidate-waf")
++    enforcement = container_id("enforcement-waf")
++
++    candidate_info = json.loads(docker("inspect", candidate)[0])[0]
++    enforcement_info = json.loads(docker("inspect", enforcement)[0])[0]
++
++    if candidate_info["Image"] != enforcement_info["Image"]:
++        raise RuntimeError("Candidate and enforcement image IDs differ")
++
++    candidate_hash = docker(
++        "exec", candidate, "sha256sum", CANDIDATE_RULE_PATH
++    )[0].split()[0]
++
++    if candidate_hash != run["compiled_sha256"]:
++        raise RuntimeError("Current candidate rule file differs from validation")
++
++    # Confirm the current baseline works before changing its rule file.
++    docker("exec", enforcement, "nginx", "-t")
++    verify_runtime(enforcement, [])
++
++    deployment_id = uuid.uuid4().hex
++    backup_name = f"backup-{deployment_id}.conf"
++
++    with (DEPLOYMENT / backup_name).open("xb") as file:
++        file.write(previous)
++        file.flush()
++        os.fsync(file.fileno())
++
++    state = {
++        "deployment_id": deployment_id,
++        "mode": "local_lab_demo",
++        "status": "prepared",
++        "validation_run_id": run_id,
++        "proposal_id": proposal_id,
++        "previous_sha256": digest(previous),
++        "candidate_sha256": digest(content),
++        "backup_file": backup_name,
++        "created_at": now(),
++        "production_ready": False,
++    }
++
++    save_state(state)
++
++    try:
++        atomic_write(ACTIVE, content)
++
++        state["promotion_evidence"] = reload_and_verify(
++            enforcement,
++            compiled["rule_ids"],
++        )
++
++        state["status"] = "active"
++        state["activated_at"] = now()
++        save_state(state)
++
++        print("Lab promotion verified on port 8083.")
++        print(json.dumps(state, indent=2))
++
++    except Exception as exc:
++        state["promotion_error"] = str(exc)
++        save_state(state)
++        print(f"Promotion failed: {exc}\nRestoring baseline...")
++        rollback(state)
++        raise RuntimeError("Promotion failed; baseline rollback was verified")
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("action", choices=["promote", "rollback"])
++    parser.add_argument("--run-id", type=int)
++    parser.add_argument("--lab-demo", action="store_true")
++    args = parser.parse_args()
++
++    if not args.lab_demo:
++        parser.error("Use --lab-demo: this controller is for the local lab")
++
++    if args.action == "promote" and args.run_id is None:
++        parser.error("Promotion requires --run-id")
++
++    DEPLOYMENT.mkdir(exist_ok=True)
++
++    try:
++        lock_fd = os.open(
++            LOCK,
++            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
++        )
++    except FileExistsError:
++        raise RuntimeError(
++            "Controller lock exists. Check whether another deployment "
++            "is running before investigating recovery."
++        )
++
++    os.close(lock_fd)
++
++    try:
++        if args.action == "promote":
++            promote(args.run_id)
++        else:
++            if not STATE.exists():
++                raise RuntimeError("No deployment state exists")
++
++            state = json.loads(STATE.read_text(encoding="utf-8"))
++            rollback(state)
++
++    finally:
++        LOCK.unlink(missing_ok=True)
++
++
++if __name__ == "__main__":
++    try:
++        main()
++    except Exception as exc:
++        print(f"Controller error: {exc}", file=sys.stderr)
+         sys.exit(1)
+\ No newline at end of file
+diff --git a/docs/ARCHITECTURE.md b/docs/ARCHITECTURE.md
+new file mode 100644
+index 0000000..3cb68ba
+--- /dev/null
++++ b/docs/ARCHITECTURE.md
+@@ -0,0 +1,30 @@
++# Architecture and boundaries
++
++```mermaid
++flowchart TD
++    UI["React scanner"] --> API["FastAPI worker"]
++    API --> MCP["MCP scanner gateway"]
++    MCP --> POLICY["ArmorIQ decision"]
++    POLICY -->|"Allow"| CHECK["Scope, DNS, TLS and budget checks"]
++    POLICY -->|"Block, hold or error"| STOP["Stop and retain evidence"]
++    CHECK --> TARGET["Authorized HTTP origin"]
++    TARGET --> REPORT["Response observations and hashes"]
++    REPORT --> UI
++```
++
++The scanner's AI review receives a minimized summary after scanning; it cannot execute tools or change verdicts. Every request is evaluated separately. The readiness endpoint reports local prerequisites and historical outcomes, not authorization for a new request.
++
++```mermaid
++flowchart TD
++    LOG["Juice Shop proxy log"] --> FIND["Detector finding"]
++    FIND --> PROP["Trusted template proposal"]
++    PROP --> COMP["Deterministic ModSecurity compiler"]
++    COMP --> CAND["Candidate WAF"]
++    CAND --> VALID["Syntax, benign cases and rule-ID evidence"]
++    VALID --> PROMOTE["Explicit lab promotion"]
++    PROMOTE --> ENFORCE["Enforcement WAF / rollback"]
++```
++
++The rule compiler handles supported SQLi patterns on `GET /rest/products/search`, parameter `q`. It does not consume arbitrary scanner findings or generate rules from model text. Generating a proposal and compiled artifact can be automated through the API. Installing candidate content and promoting validated rules remain explicit operator actions.
++
++The separate DevOps MCP service runs five constrained lab tools. A deterministic capability policy and optional semantic veto run before ArmorIQ. Decisions are recorded before execution; local deterministic denials may add exact-request deny fingerprints. This is a deny cache, not general policy learning. Shell tools run only the three allowlisted capabilities using a sanitized child environment.
+diff --git a/docs/DEMO_SCRIPT.md b/docs/DEMO_SCRIPT.md
+new file mode 100644
+index 0000000..180b76f
+--- /dev/null
++++ b/docs/DEMO_SCRIPT.md
+@@ -0,0 +1,91 @@
++# Three-minute demo: scanner, compiler and MCP guard
++
++## Before recording
++
++- [ ] Run `start-demo.ps1` before recording; do not spend video time on image downloads.
++- [ ] Configure ArmorIQ policies for **both** scanner and DevOps agent identities; keep `MCP_ARMORIQ_MODE=required`.
++- [ ] Rehearse an allowed scan and a cloud-denied first request. Record actual cloud outcomes, never a mocked cloud check.
++- [ ] Open React at port 8502, API docs at port 8010, and the relevant ArmorIQ console view. Streamlit at 8501 is also a scanner, not a rule-compilation UI.
++- [ ] Keep API keys, `.env`, unrelated windows and private account details off screen.
++- [ ] Prepare one real WAF log finding using the local-only steps below. If using a pre-existing finding, identify it as a previously collected lab event.
++- [ ] Prebuild the candidate WAF; rehearse syntax and benign cases. If an application regression remains, disclose it.
++- [ ] Use a 16:9 recording, readable zoom, mic check and notifications off. Check the saved video duration and playback before submission.
++
++## Recording timeline (180 seconds)
++
++| Time | Show | Say / prove |
++| --- | --- | --- |
++| 0:00–0:15 | Dashboard + architecture | “AutoShield bounds assessment requests, compiles trusted candidate rules and records tool-policy decisions.” |
++| 0:15–1:00 | New live authorized fixture scan; Activity | Start at `http://fixture-lab:8090/`, active mode, 5 pages, 25 requests, 120 seconds. Show a real MCP/ArmorIQ decision, progress and one observation with evidence. The fixture SQL error is synthetic; reflection is not proof of XSS. |
++| 1:00–1:55 | WAF log finding → proposal API → compiled artifact | Show the finding/request ID, call the proposal endpoint and compiler, then display rule ID, route scope and SHA-256. This is automatic **trusted-template compilation**, not LLM-written rules or automatic deployment. If rehearsed, show actual candidate syntax/attributed blocking evidence. |
++| 1:55–2:45 | DevOps MCP lab replay or live agent; cloud-deny scan | Show one allowed safe tool, one blocked secret/destructive proposal, and `NOT EXECUTED` with its audit call ID. Local deterministic blocks may precede the cloud check; label the attribution. Show a separately prepared denied-first-request scanner run with zero target requests and correlate with the ArmorIQ console. |
++| 2:45–3:00 | Exported report and scope | Export actual evidence. State selected checks, local lab scope, advisory AI and the distinction between compiled, validated and deployed. |
++
++If cloud latency exceeds the recording window, show a clearly labeled earlier real run alongside the live run. Do not present a replay as a compromised LLM, or local policy as a cloud decision. Do not edit an unfinished request to imply success.
++
++## Exact WAF compilation rehearsal (PowerShell)
++
++Run from the project root. These commands send one known test string only to your local Juice Shop proxy. The web-scanner fixture findings are a separate data model and do **not** feed this compiler automatically.
++
++```powershell
++$api = 'http://127.0.0.1:8010'
++$marker = 'autoshield-demo-' + [guid]::NewGuid().ToString('N')
++$query = [uri]::EscapeDataString("' OR 1=1-- " + $marker)
++try {
++    $null = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:8080/rest/products/search?q=" + $query) -TimeoutSec 10
++} catch {
++    # An HTTP 4xx/5xx is still a response. A network failure must stop rehearsal.
++    if ($null -eq $_.Exception.Response) { throw }
++}
++
++# Collection and finding generation run in the backend background worker.
++$finding = $null
++for ($attempt = 0; $attempt -lt 15; $attempt++) {
++    $page = Invoke-RestMethod -Uri "$api/findings?limit=100" -TimeoutSec 10
++    $finding = $page.findings | Where-Object { $_.request.query_evidence -like "*$marker*" } | Select-Object -First 1
++    if ($finding) { break }
++    Start-Sleep -Seconds 1
++}
++if (-not $finding) { throw 'Fresh lab finding was not collected; inspect proxy/backend health.' }
++$finding | Select-Object id, event_id, matched_rules
++
++$proposal = Invoke-RestMethod -Method Post -Uri "$api/findings/$($finding.id)/proposal" -TimeoutSec 10
++$proposalId = $proposal.proposal.id
++$compiled = Invoke-RestMethod -Uri "$api/proposals/$proposalId/compiled" -TimeoutSec 10
++$compiled | Select-Object proposal_id, compile_status, validation_status, deployment_status, rule_ids, sha256
++$compiled.content
++```
++
++The last two calls are the generation/compilation automation to show on camera. The compiler deliberately reports `not_run` validation and `not_deployed` deployment. AI review cannot inject executable rule text.
++
++## Optional candidate installation and proof
++
++Do this before recording if you want to show actual candidate blocking. It changes only the lab candidate rule file; it does not promote the rule into the enforcement WAF.
++
++```powershell
++# Continue in the same shell so $compiled and $proposalId refer to that run.
++$ruleFile = Join-Path (Get-Location) 'candidate/autoshield.conf'
++[IO.File]::WriteAllText($ruleFile, $compiled.content, (New-Object Text.UTF8Encoding($false)))
++$compose = @('-f', 'compose.yaml', '-f', 'compose.fixture.yaml', '-f', 'compose.motion.yaml', '-f', 'compose.mcp.yaml')
++& docker compose @compose exec -T candidate-waf nginx -t
++if ($LASTEXITCODE -ne 0) { throw 'Candidate syntax check failed; do not reload.' }
++& docker compose @compose exec -T candidate-waf nginx -s reload
++if ($LASTEXITCODE -ne 0) { throw 'Candidate reload failed.' }
++$validation = Invoke-RestMethod -Method Post -Uri "$api/proposals/$proposalId/validate-http" -TimeoutSec 120
++$validation
++python tests/verify_candidate_evidence.py $proposalId
++if ($LASTEXITCODE -ne 0) { throw 'Candidate attribution check failed.' }
++```
++
++This Python evidence helper needs host Python and Docker CLI. It verifies loaded rule hashes, syntax and an exact blocking transaction containing the candidate rule ID. The HTTP validation status normally remains `review_required`; it is not a production approval. Review known benign application errors rather than hiding them. Baseline CRS may already block these inputs, so do not claim added coverage from a 403 alone.
++
++Promotion is intentionally explicit and out of scope for the short compilation segment. Only if separately rehearsed, review the validation, attach its matching evidence and use `deploy_lab.py promote --run-id <actual-id> --lab-demo`. The controller checks eligibility and records rollback state. Never substitute a proposal ID for a validation run ID.
++
++## Submission proof checklist
++
++- [ ] Live scan: target/scope, actual decision and response evidence are visible.
++- [ ] Compiler: finding ID → proposal ID → deterministic scoped rules and hash are visible.
++- [ ] Enforcement: allowed tool success and blocked tool non-execution have distinct audit records.
++- [ ] ArmorIQ: the console event matches the agent/tool and actual run; historical events are labeled.
++- [ ] Report: exported findings, request limits and coverage limitations are readable.
++- [ ] Claims: no full Top 10, confirmed exploit, automatic production patching or policy learning claim beyond recorded evidence.
+diff --git a/docs/FINAL_REVIEW.md b/docs/FINAL_REVIEW.md
+new file mode 100644
+index 0000000..83e897f
+--- /dev/null
++++ b/docs/FINAL_REVIEW.md
+@@ -0,0 +1,45 @@
++# Final review and patch notes
++
++## Implemented changes
++
++- Root contains README, launcher, Compose files and source/configuration. Auxiliary Markdown lives under `docs/`; older update notes live under `docs/archive/`; manifests live under `docs/manifests/`.
++- Moved the backup-preserving merge script to `scripts/Apply-Update.ps1` and adjusted its project-root/manifest resolution.
++- Added `start-demo.ps1`: PowerShell 5.1-compatible syntax, path-safe invocation, hidden missing-key input, four-file Compose validation, Linux-engine check, health waiting, local API/UI checks, stop/config-only modes and noninteractive failures.
++- Compose passes ArmorIQ consistently to scanner/gateway, respects configured lab origins in the fixture overlay, and waits for fixture health before starting the DevOps gateway.
++- Executor resolves Linux Bash or Git for Windows Bash. It rejects a WSL launcher fallback, preserves only required Windows OS environment, does not inherit provider keys or Bash startup hooks, and shell-quotes the operator workspace for the fixed disk command. Container workspace remains `/workspace`; native development defaults to the bundled lab directory.
++- Windows uptime uses `GetTickCount64`; Linux uses `/proc/uptime`. Native cwd comparisons normalize filesystem paths. Actual Windows execution still needs validation on Windows.
++- ArmorIQ normalizes string/enum actions, requires strict `allowed=True` plus action `allow`, treats blank keys as unavailable, and closes failed sessions safely and idempotently.
++- HTTPS tests generate ephemeral localhost certificates with Python cryptography (already an SDK dependency), removing OpenSSL CLI and Git Bash argument-conversion dependencies.
++- WAF integration suites moved to `tests/integration/`; plain unit-test discovery no longer requires live WAF ports.
++- Corrected host API port 8000 → 8010 in deployment and candidate-evidence helpers.
++- Added portability, compiler boundary and launcher failure-path tests; compiler rejects arbitrary template/scope and ignores advisory rule text.
++
++## Verification
++
++| Check | Result |
++| --- | --- |
++| Python unit suite (`unittest discover -s tests -v`) | 111 passed |
++| Synthetic fixture suite | 4 passed |
++| Frontend API/grouping tests | 6 passed |
++| React production build | Passed |
++| Actual Docker Compose CLI v2.39.4: base, fixture and full merged config | Passed |
++| Actual launcher `-CheckOnly` from a different working directory | Passed; temporary .env removed |
++| PowerShell 7.4.6 launcher scenarios with mocked Docker/HTTP | 7 passed |
++| Actual PowerShell updater against an isolated copy of the uploaded project | Passed; configuration preserved, old files backed up |
++
++The Python suite emits a Starlette/httpx deprecation warning in this runtime; it reports no failures or errors. PowerShell source parses successfully. The supplied test harness chooses its installed PowerShell executable on Windows or Linux.
++
++A full Linux container build, live ArmorIQ cloud ALLOW/BLOCK, Windows PowerShell 5.1 runtime, actual Git for Windows execution and visual/video playback still require the operator machine. Passing configuration and unit checks is not evidence those live checks succeeded.
++
++## Apply the exact patch
++
++`docs/patches/final-touches.patch` is a Git patch against the uploaded ZIP's original source. It includes new files, renames/deletions and code changes; it intentionally does not include itself. Extract that one patch into a separate directory, then run from your original source checkout:
++
++```text
++git apply --check /path/to/final-touches.patch
++git apply /path/to/final-touches.patch
++```
++
++For a project with your own uncommitted changes, inspect the diff first. Do not force a failed patch. The supplied full source ZIP already contains all changes, so do not apply the patch again to that updated tree.
++
++The historical updater preserves custom `.env` and Compose files and backs up replaced/relocated files. Its preservation behavior means Compose changes need manual review against this patch on an older installation. The full release ZIP contains the current four Compose files.
+diff --git a/PUBLIC_SCANNER_MCP.md b/docs/PUBLIC_SCANNER_MCP.md
+similarity index 85%
+rename from PUBLIC_SCANNER_MCP.md
+rename to docs/PUBLIC_SCANNER_MCP.md
+index eae7e24..254c375 100644
+--- a/PUBLIC_SCANNER_MCP.md
++++ b/docs/PUBLIC_SCANNER_MCP.md
+@@ -7,10 +7,10 @@ This update replaces the scanner API's lab-only target gate. Public HTTP/HTTPS t
+ Extract this ZIP separately. In PowerShell, from its `AutoShield-AI` directory, run:
+ 
+ ```powershell
+-.\Apply-Update.ps1 -ProjectPath "C:\path\to\your\existing\AutoShield-AI"
++.\scripts\Apply-Update.ps1 -ProjectPath "C:\path\to\your\existing\AutoShield-AI"
+ ```
+ 
+-The script copies only changed/new files, backs up files it replaces, and leaves `.env`, your compose port mappings, stored Docker volumes, and unrelated files alone. Alternatively merge the changed files listed in `SCANNER_GATEWAY_UPDATE.json` manually.
++The script copies only changed/new files, backs up files it replaces, and leaves `.env`, your compose port mappings, stored Docker volumes, and unrelated files alone. Alternatively merge the changed files listed in `docs/manifests/SCANNER_GATEWAY_UPDATE.json` manually.
+ 
+ ## Configure ArmorIQ once
+ 
+@@ -75,11 +75,9 @@ This is an operator-run local deployment, not multi-tenant SaaS authentication o
+ 
+ ## Validation and performance
+ 
+-96 local Python tests passed; the frontend production build and 6 frontend tests passed. The PowerShell merge script was reviewed but not executed because PowerShell is unavailable here.
++Current verification: 111 Python unit tests, 4 fixture tests and 6 frontend tests passed; the frontend production build passed. The launcher and updater were exercised using PowerShell 7.4.6, and actual Docker Compose CLI configuration validation passed. See [FINAL_REVIEW.md](FINAL_REVIEW.md) for precise coverage and remaining live checks.
+ 
+-Local tests cover public API acceptance, retained authorization acknowledgment, TLS restrictions, real MCP stdio initialization and calls, missing-key fail-closed behavior, cloud deny/hold paths, private DNS rejection, cancellation after authorization, request budget, and the previous scanner regressions. A temporary test harness stubs only the cloud decision and verifies that a real MCP call reaches a real local HTTP fixture while the denied call does not. Production exposes no simulated-allow switch.
+-
+-Live ArmorIQ ALLOW/BLOCK requires your actual key and console policy and was not verified in this environment. Docker is not installed in the editing environment: YAML and COPY paths can be checked, but image builds and live WAF integration tests need your machine.
++Unit coverage includes public API acceptance, authorization acknowledgment, TLS restrictions, real MCP stdio calls, fail-closed behavior, deny/hold cases, DNS restrictions, cancellation, budgets and local fixture HTTP execution. Cloud decisions are stubbed only in tests. Production exposes no simulated-allow switch. No live ArmorIQ ALLOW/BLOCK or full Docker Engine/WAF run was performed here.
+ 
+ Cloud checks add latency and consume provider quota. MCP is persistent for each scan; cloud decisions are never cached as blanket allows. Larger crawls may stop at the configured time budget. Page limit 0 means no page cap, not unlimited requests/time. JavaScript execution, authenticated session crawling and full exploit testing are outside this scanner's scope.
+ 
+@@ -91,4 +89,4 @@ python -m unittest discover -s tests -p "test_detector.py"
+ python -m unittest discover -s tests -p "test_mcp_gateway.py"
+ ```
+ 
+-The HTTPS fixture regression uses OpenSSL on PATH. The WAF integration suites still need their existing running lab services.
++The HTTPS fixture regression generates an ephemeral certificate with Python cryptography; no OpenSSL CLI is required. The WAF integration suites still need their existing running lab services.
+diff --git a/docs/README.md b/docs/README.md
+new file mode 100644
+index 0000000..dca3319
+--- /dev/null
++++ b/docs/README.md
+@@ -0,0 +1,12 @@
++# Documentation
++
++| Document | Purpose |
++| --- | --- |
++| [SETUP.md](SETUP.md) | Current launcher, environment, cloud identities and Compose wiring |
++| [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | Three-minute recording and exact WAF compilation steps |
++| [ARCHITECTURE.md](ARCHITECTURE.md) | Scanner, compiler and DevOps execution boundaries |
++| [FINAL_REVIEW.md](FINAL_REVIEW.md) | Changes, validation and limitations |
++| [PUBLIC_SCANNER_MCP.md](PUBLIC_SCANNER_MCP.md) | Detailed scanner MCP and cloud enforcement behavior |
++| [SCANNER_GUIDE.md](SCANNER_GUIDE.md) | Extended scanner notes; check current setup first |
++
++Historical migration notes and older UI instructions are in `archive/`. They describe previous revisions and do not override current README or SETUP. Update manifests are in `manifests/`; their file paths are relative to the project root.
+diff --git a/SCANNER_GUIDE.md b/docs/SCANNER_GUIDE.md
+similarity index 98%
+rename from SCANNER_GUIDE.md
+rename to docs/SCANNER_GUIDE.md
+index b1d9817..c18b30e 100644
+--- a/SCANNER_GUIDE.md
++++ b/docs/SCANNER_GUIDE.md
+@@ -193,8 +193,8 @@ The scanner tests start an ephemeral local HTTP server. They do not contact the
+ website supplied in chat or call external AI providers. WAF integration tests require Docker:
+ 
+ ```powershell
+-python -m unittest discover -s tests -p "test_waf_baseline.py" -v
+-python -m unittest discover -s tests -p "test_candidate_waf.py" -v
++python -m unittest discover -s tests/integration -p "test_waf_baseline.py" -v
++python -m unittest discover -s tests/integration -p "test_candidate_waf.py" -v
+ ```
+ 
+ ## Existing WAF workflow
+diff --git a/docs/SETUP.md b/docs/SETUP.md
+new file mode 100644
+index 0000000..52b33af
+--- /dev/null
++++ b/docs/SETUP.md
+@@ -0,0 +1,66 @@
++# Setup and troubleshooting
++
++## One command
++
++Use Windows PowerShell 5.1+ or PowerShell 7. Install Docker Desktop, enable Linux containers, then run from the extracted project:
++
++```powershell
++.\start-demo.ps1
++```
++
++No Python or Node installation is required on the host for the Docker demo. Native Python unit tests need the dependencies listed in README and Git Bash on Windows.
++
++The script resolves paths from its own directory, so a project path containing spaces is supported. It uses the same four Compose files for validation, start and stop. It checks the engine, required ArmorIQ configuration, Compose wait support and local service endpoints. Startup does not scan a target or call ArmorIQ.
++
++First launch copies `.env.example` if `.env` is absent and asks for a missing ArmorIQ key using hidden input. It appends the entered key to `.env` without replacing existing settings. Keys are never passed as command-line arguments or printed. Configure your cloud policies before recording.
++
++```powershell
++.\start-demo.ps1 -CheckOnly
++.\start-demo.ps1 -NonInteractive -NoBrowser
++.\start-demo.ps1 -NoBuild -WaitTimeoutSeconds 300
++.\start-demo.ps1 -Stop
++```
++
++`-CheckOnly` performs actual Compose configuration validation without starting containers or asking for secrets. If `.env` is absent, it uses a temporary template copy and removes that copy afterward. `-NonInteractive` fails clearly if the key is missing. `-Stop` retains named volumes. Compose must support `up --wait --wait-timeout`.
++
++If local execution policy blocks this downloaded script, inspect it and run a single process with `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\start-demo.ps1`; this does not change the machine's persistent execution policy. On Linux with PowerShell installed, use `pwsh -File ./start-demo.ps1 -NoBrowser`.
++
++## ArmorIQ policy identities
++
++| Flow | Agent | User | Tool name |
++| --- | --- | --- | --- |
++| Scanner | `autoshield-scanner` | `local-scan-operator` | `autoshield_scanner__http_get` |
++| DevOps MCP lab | `autoshield-lab-agent` | `local-lab-operator` | `autoshield__read_system_metrics`, `autoshield__read_lab_file`, `autoshield__query_database`, `autoshield__run_system_command`, `autoshield__invoke_lab_api` |
++
++Scanner arguments are `url`, `method`, `mode`, `purpose`, `origin`, `verify_ssl`. Allow only the intended lab origin and probe purposes. Local scope restrictions still apply after a cloud allow. DevOps uses the fixed operator-defined plan in `backend/mcp_policy.py`.
++
++Keep `MCP_ARMORIQ_MODE=required`. Explicit `disabled` is a local-policy-only DevOps mode; it never disables scanner ArmorIQ enforcement. Groq live-agent execution needs `GROQ_API_KEY`. Optional `MCP_SEMANTIC_MODE=required` also needs working Groq configuration. Gemini is used for optional legacy WAF proposal review; no LLM writes executable rule text.
++
++## Compose wiring verified
++
++| File | Responsibility |
++| --- | --- |
++| `compose.yaml` | Backend/data/logs, proxy, isolated Juice Shop, Streamlit scanner, three WAF paths |
++| `compose.fixture.yaml` | Fixture service and configurable lab-origin list |
++| `compose.motion.yaml` | React build/Nginx on loopback port 8502 |
++| `compose.mcp.yaml` | Restricted gateway, writable audit volume, fixture health dependency, UI gateway dependency |
++
++Use all four together for the complete demo. `compose.mcp.yaml` is an overlay and depends on the fixture and motion overlays. The Linux gateway uses `/workspace`; native Windows Python uses an existing operator-configured `MCP_WORKSPACE` or the bundled lab directory. The vulnerable Juice Shop is on the internal lab network. Exposed service ports remain bound to loopback.
++
++## Manual diagnostics
++
++```powershell
++docker compose -f compose.yaml -f compose.fixture.yaml -f compose.motion.yaml -f compose.mcp.yaml ps
++docker compose -f compose.yaml -f compose.fixture.yaml -f compose.motion.yaml -f compose.mcp.yaml logs --tail=80 backend mcp-gateway motion-ui fixture-lab
++```
++
++The launcher uses default published ports. Preserve the supplied port mappings for the recording. If you customize the UI port, update gateway trusted Host/Origin checks and launcher HTTP probes together.
++
++- Missing key: update `.env` and recreate backend and gateway. Readiness never proves key validity.
++- Policy hold/deny/unavailable: inspect the actual policy outcome; never enable a blanket fallback for the recording.
++- Port occupied: stop the other local deployment before starting this one.
++- Slow first build: prebuild before recording; increase the wait timeout if needed.
++- WAF integration failures: inspect candidate content, `nginx -t` and exact audit rule IDs. An HTTP 403 alone does not prove the AutoShield rule matched.
++- Existing setup: the full ZIP contains current Compose wiring. `scripts/Apply-Update.ps1` preserves custom Compose and `.env`; compare the accompanying patch before using the new launcher with an older installation.
++
++Official references: [Compose installation](https://docs.docker.com/compose/install/), [Compose up options](https://docs.docker.com/reference/cli/docker/compose/up/), [PowerShell installation](https://learn.microsoft.com/powershell/scripting/install/install-powershell).
+diff --git a/FINAL_TOUCHES.md b/docs/archive/FINAL_TOUCHES.md
+similarity index 95%
+rename from FINAL_TOUCHES.md
+rename to docs/archive/FINAL_TOUCHES.md
+index 052eb9b..d57dd4e 100644
+--- a/FINAL_TOUCHES.md
++++ b/docs/archive/FINAL_TOUCHES.md
+@@ -1,3 +1,5 @@
++> Historical migration note. Use [current setup](../SETUP.md) and the root README for this release.
++
+ # Final touches
+ 
+ Implemented:
+diff --git a/MOTION_UI_GUIDE.md b/docs/archive/MOTION_UI_GUIDE.md
+similarity index 96%
+rename from MOTION_UI_GUIDE.md
+rename to docs/archive/MOTION_UI_GUIDE.md
+index ab989f2..b165872 100644
+--- a/MOTION_UI_GUIDE.md
++++ b/docs/archive/MOTION_UI_GUIDE.md
+@@ -1,3 +1,5 @@
++> Historical migration note. Use [current setup](../SETUP.md) and the root README for this release.
++
+ # AutoShield motion interface
+ 
+ A React interface inspired by the reference video's full-screen composition, bold type and interaction-driven scenes. Original AutoShield artwork uses CSS; no reference-site media or branding is copied.
+diff --git a/SCANNER_REFACTOR.md b/docs/archive/SCANNER_REFACTOR.md
+similarity index 98%
+rename from SCANNER_REFACTOR.md
+rename to docs/archive/SCANNER_REFACTOR.md
+index b5ffc67..bd13596 100644
+--- a/SCANNER_REFACTOR.md
++++ b/docs/archive/SCANNER_REFACTOR.md
+@@ -1,3 +1,5 @@
++> Historical migration note. Use [current setup](../SETUP.md) and the root README for this release.
++
+ > Public target and gateway behavior has been updated. Read PUBLIC_SCANNER_MCP.md first; older lab-only/direct-transport instructions below are historical.
+ 
+ # Scanner refactor
+diff --git a/UPDATE_ACTIVITY.md b/docs/archive/UPDATE_ACTIVITY.md
+similarity index 94%
+rename from UPDATE_ACTIVITY.md
+rename to docs/archive/UPDATE_ACTIVITY.md
+index c93de6d..9528aa2 100644
+--- a/UPDATE_ACTIVITY.md
++++ b/docs/archive/UPDATE_ACTIVITY.md
+@@ -1,3 +1,5 @@
++> Historical migration note. Use [current setup](../SETUP.md) and the root README for this release.
++
+ # Activity update
+ 
+ Copy these files into your EXISTING project folder:
+diff --git a/UPDATE_EXISTING_PROJECT.md b/docs/archive/UPDATE_EXISTING_PROJECT.md
+similarity index 93%
+rename from UPDATE_EXISTING_PROJECT.md
+rename to docs/archive/UPDATE_EXISTING_PROJECT.md
+index d227a0a..3373967 100644
+--- a/UPDATE_EXISTING_PROJECT.md
++++ b/docs/archive/UPDATE_EXISTING_PROJECT.md
+@@ -1,3 +1,5 @@
++> Historical migration note. Use [current setup](../SETUP.md) and the root README for this release.
++
+ # Update your existing project
+ 
+ This update is based on your uploaded AutoShield-AI (3).zip. That archive did not contain a .env file. No credentials were added or replaced.
+diff --git a/UPDATE_LAB_WORKSPACE.md b/docs/archive/UPDATE_LAB_WORKSPACE.md
+similarity index 93%
+rename from UPDATE_LAB_WORKSPACE.md
+rename to docs/archive/UPDATE_LAB_WORKSPACE.md
+index 7c5763e..7b5f1f5 100644
+--- a/UPDATE_LAB_WORKSPACE.md
++++ b/docs/archive/UPDATE_LAB_WORKSPACE.md
+@@ -1,3 +1,5 @@
++> Historical migration note. Use [current setup](../SETUP.md) and the root README for this release.
++
+ # Docker lab assessment workspace
+ 
+ Replace backend/scan_api.py and frontend/scanner_ui.py in your current working project. Keep .env beside compose.yaml. No environment changes required.
+diff --git a/UPDATE_MCP_GATEWAY.md b/docs/archive/UPDATE_MCP_GATEWAY.md
+similarity index 99%
+rename from UPDATE_MCP_GATEWAY.md
+rename to docs/archive/UPDATE_MCP_GATEWAY.md
+index b62f078..241402e 100644
+--- a/UPDATE_MCP_GATEWAY.md
++++ b/docs/archive/UPDATE_MCP_GATEWAY.md
+@@ -1,3 +1,5 @@
++> Historical migration note. Use [current setup](../SETUP.md) and the root README for this release.
++
+ # AutoShield MCP hackathon update
+ 
+ This is an update for your existing AutoShield-AI folder, not a replacement project.
+diff --git a/UPDATE_SCANNER_UI.md b/docs/archive/UPDATE_SCANNER_UI.md
+similarity index 83%
+rename from UPDATE_SCANNER_UI.md
+rename to docs/archive/UPDATE_SCANNER_UI.md
+index 945e732..8b1daee 100644
+--- a/UPDATE_SCANNER_UI.md
++++ b/docs/archive/UPDATE_SCANNER_UI.md
+@@ -1,3 +1,5 @@
++> Historical migration note. Use [current setup](../SETUP.md) and the root README for this release.
++
+ # Scanner-only interface
+ 
+ Replace only frontend/app.py in your existing project. Keep your current .env and project folder.
+diff --git a/MCP_UPDATE_MANIFEST.json b/docs/manifests/MCP_UPDATE_MANIFEST.json
+similarity index 54%
+rename from MCP_UPDATE_MANIFEST.json
+rename to docs/manifests/MCP_UPDATE_MANIFEST.json
+index dad2bbf..e8541aa 100644
+--- a/MCP_UPDATE_MANIFEST.json
++++ b/docs/manifests/MCP_UPDATE_MANIFEST.json
+@@ -1,22 +1,22 @@
+ {
+   "backend/mcp_ai.py": "32135d54a5344cb9e8bd7c11559fc2e91e23b17668059e5560b0fcaa57b7e012",
+-  "backend/mcp_armoriq.py": "618baf79b97cc73a2f0ce0481797cee5e086cfa72cf59c595a2e90db5914edfa",
++  "backend/mcp_armoriq.py": "29ea4597cfba70e7456a94fb509b21582c4cd3a6a758b7fe8058748fc5afdfcb",
+   "backend/mcp_audit.py": "06c08cbdf3e1a998a9205a0421d9e120a13db6d819bcc2533c664fd6477db66f",
+-  "backend/mcp_executor.py": "02e32ee274215376550067097ad2e9b01c6726dad5947c7856a00ee3b7b519ec",
++  "backend/mcp_executor.py": "3fe72363d3b43bd6d0033089600b03deba45b186e417e76e51338a0ee5e0565c",
+   "backend/mcp_guard.py": "63fb340e4dc6599c75a26532e163fe21f592a2ea2f350180270a17cf514b224c",
+   "backend/mcp_policy.py": "5da7b1259c220709ba87adc53da511050a927a4d154cb4ef2b8b11a0402340f3",
+-  "backend/mcp_server.py": "8e9c0394f111f691b95afc3c20dbece0b2303f13509f93fb83bd5733e1276ea7",
++  "backend/mcp_server.py": "677cf597944fd35daa1dce5a0e25c64c226b37ca81bfe2dc6a42162e875cee11",
+   "backend/mcp_smoke.py": "91db73774b4cbb46bca7d21855147a2de7d7b490a4efee9e7d6a1eafc2157802",
+   "backend/mcp_lab/injection.log": "5aa7025f085ecc10c6aa82d21fbe691cd0ad4e9755803508520e4d9e34bb201d",
+   "backend/mcp_lab/ops.log": "dd375e47e878540dae6814b34bc87fc537f1c8078ee848378af644dd142b39e7",
+-  "backend/Dockerfile.mcp": "b4afef2f2844c7402c81dfae41684ea0daf27898fad4ffcc0eddddcc63bd3f02",
++  "backend/Dockerfile.mcp": "15cf98afdbd5bfe97541fc876b13baf02f7fd5c5344f9e266530555ede87d1d0",
+   "backend/requirements-mcp.txt": "30472803612583447db1e680413abef0b95ac81dbbdaa25ad056d86f49a2cb98",
+-  "compose.mcp.yaml": "e3f0fc520b95d5ba2f6b9272c4eeae70054bfdd72907fd8caaa8067825e9c4ef",
+-  "motion-ui/src/main.jsx": "d66bbc149906dfb460fac77f3e2096658e40d32ddba5b93b0f929b7838145c50",
+-  "motion-ui/src/McpGateway.jsx": "80ce7d815c8ee1e78bbba593057ce66120a88b21e16e4b485582d800aaeea235",
++  "compose.mcp.yaml": "595e6be105f8a04d75b7a21c23f8ae8897d0b075296b83d6c4aa816a9cecddba",
++  "motion-ui/src/main.jsx": "5816b164cb0aea1b77b36d32dfa892de6442c7297efee091dd5766c0458c16da",
++  "motion-ui/src/McpGateway.jsx": "c86002a4e879e6963c754df7bf6ad90f4fd4265ba0ba8338b98ce22a88655613",
+   "motion-ui/src/mcp.css": "56448471b3cc2c0c840541bfbb9d68804cb341698864f98551a4f685a9e1dada",
+   "motion-ui/nginx.conf": "94f943cf460b78e565228b13c1bac52a03304a119e63dc11942a6a70f6f09b23",
+   "motion-ui/vite.config.js": "b03cd5d2b3a7f53816588e36a68e5bcafd8f5eed272b7f5e9b4856b622ff84ae",
+-  "tests/test_mcp_gateway.py": "1dcc8c26d91b1dadc785a30f56258a5c0217cbb09b6584f1f24c08ef2cbffa7d",
+-  "UPDATE_MCP_GATEWAY.md": "0a3bd73967af50bbcd30ee6a2f5b68ebdb4ef6271cb541b7533d2b08ea6a33d0"
++  "tests/test_mcp_gateway.py": "35b660b37be96698ceb67f4070e8b5bc27cdd92f4e46d38d57b17b875c89ddd3",
++  "docs/archive/UPDATE_MCP_GATEWAY.md": "32ffee3250d3fece9280ad67597e98e2b0fb28be1cf9836493c6de7c7a227f6d"
+ }
+diff --git a/docs/manifests/SCANNER_GATEWAY_UPDATE.json b/docs/manifests/SCANNER_GATEWAY_UPDATE.json
+new file mode 100644
+index 0000000..ff8e47b
+--- /dev/null
++++ b/docs/manifests/SCANNER_GATEWAY_UPDATE.json
+@@ -0,0 +1,129 @@
++{
++  "files": [
++    "docs/PUBLIC_SCANNER_MCP.md",
++    "docs/README.md",
++    "docs/SCANNER_GUIDE.md",
++    "docs/archive/SCANNER_REFACTOR.md",
++    "backend/Dockerfile",
++    "backend/requirements.txt",
++    "backend/scan_api.py",
++    "backend/scan_engine.py",
++    "backend/scan_gateway_policy.py",
++    "backend/scan_mcp_client.py",
++    "backend/scan_mcp_server.py",
++    "frontend/scanner_ui.py",
++    "motion-ui/src/main.jsx",
++    "tests/test_scan_authorization.py",
++    "tests/test_scan_mcp.py",
++    ".env.example",
++    "docs/DEMO_SCRIPT.md",
++    "docs/archive/FINAL_TOUCHES.md",
++    "backend/mcp_armoriq.py",
++    "backend/mcp_server.py",
++    "motion-ui/src/McpGateway.jsx",
++    "motion-ui/src/style.css",
++    "motion-ui/src/findings.js",
++    "motion-ui/src/findings.test.js",
++    "tests/test_scan_readiness.py",
++    "tests/test_mcp_gateway.py",
++    ".gitignore",
++    "start-demo.ps1",
++    "scripts/Apply-Update.ps1",
++    "docs/SETUP.md",
++    "docs/ARCHITECTURE.md",
++    "docs/FINAL_REVIEW.md",
++    "backend/mcp_executor.py",
++    "backend/Dockerfile.mcp",
++    "backend/mcp_lab/Dockerfile.mcp",
++    "tests/test_mcp_portability.py",
++    "tests/test_rule_compiler.py",
++    "tests/test_scanner_refactor.py",
++    "tests/powershell/test-start-demo.ps1",
++    "tests/integration/test_candidate_waf.py",
++    "tests/integration/test_waf_baseline.py",
++    "tests/integration/README.md",
++    "deploy_lab.py",
++    "tests/verify_candidate_evidence.py",
++    "docs/manifests/MCP_UPDATE_MANIFEST.json",
++    "README.md",
++    "docs/archive/UPDATE_MCP_GATEWAY.md",
++    "docs/archive/UPDATE_LAB_WORKSPACE.md",
++    "docs/archive/UPDATE_ACTIVITY.md",
++    "docs/archive/UPDATE_EXISTING_PROJECT.md",
++    "docs/archive/UPDATE_SCANNER_UI.md",
++    "docs/archive/MOTION_UI_GUIDE.md"
++  ],
++  "preserve": [
++    ".env",
++    "compose.yaml",
++    "compose.fixture.yaml",
++    "compose.motion.yaml",
++    "compose.mcp.yaml"
++  ],
++  "relocations": [
++    {
++      "from": "DEMO_SCRIPT.md",
++      "to": "docs/DEMO_SCRIPT.md"
++    },
++    {
++      "from": "PUBLIC_SCANNER_MCP.md",
++      "to": "docs/PUBLIC_SCANNER_MCP.md"
++    },
++    {
++      "from": "SCANNER_GUIDE.md",
++      "to": "docs/SCANNER_GUIDE.md"
++    },
++    {
++      "from": "SCANNER_REFACTOR.md",
++      "to": "docs/archive/SCANNER_REFACTOR.md"
++    },
++    {
++      "from": "UPDATE_MCP_GATEWAY.md",
++      "to": "docs/archive/UPDATE_MCP_GATEWAY.md"
++    },
++    {
++      "from": "FINAL_TOUCHES.md",
++      "to": "docs/archive/FINAL_TOUCHES.md"
++    },
++    {
++      "from": "UPDATE_LAB_WORKSPACE.md",
++      "to": "docs/archive/UPDATE_LAB_WORKSPACE.md"
++    },
++    {
++      "from": "UPDATE_ACTIVITY.md",
++      "to": "docs/archive/UPDATE_ACTIVITY.md"
++    },
++    {
++      "from": "UPDATE_EXISTING_PROJECT.md",
++      "to": "docs/archive/UPDATE_EXISTING_PROJECT.md"
++    },
++    {
++      "from": "UPDATE_SCANNER_UI.md",
++      "to": "docs/archive/UPDATE_SCANNER_UI.md"
++    },
++    {
++      "from": "MOTION_UI_GUIDE.md",
++      "to": "docs/archive/MOTION_UI_GUIDE.md"
++    },
++    {
++      "from": "MCP_UPDATE_MANIFEST.json",
++      "to": "docs/manifests/MCP_UPDATE_MANIFEST.json"
++    },
++    {
++      "from": "SCANNER_GATEWAY_UPDATE.json",
++      "to": "docs/manifests/SCANNER_GATEWAY_UPDATE.json"
++    },
++    {
++      "from": "Apply-Update.ps1",
++      "to": "scripts/Apply-Update.ps1"
++    },
++    {
++      "from": "tests/test_candidate_waf.py",
++      "to": "tests/integration/test_candidate_waf.py"
++    },
++    {
++      "from": "tests/test_waf_baseline.py",
++      "to": "tests/integration/test_waf_baseline.py"
++    }
++  ]
++}
+diff --git a/Apply-Update.ps1 b/scripts/Apply-Update.ps1
+similarity index 53%
+rename from Apply-Update.ps1
+rename to scripts/Apply-Update.ps1
+index 17322e8..29dcbc0 100644
+--- a/Apply-Update.ps1
++++ b/scripts/Apply-Update.ps1
+@@ -1,6 +1,6 @@
+ param([Parameter(Mandatory=$true)][string]$ProjectPath)
+ $ErrorActionPreference = 'Stop'
+-$sourceRoot = $PSScriptRoot
++$sourceRoot = Split-Path -Parent $PSScriptRoot
+ $destinationRoot = (Resolve-Path -LiteralPath $ProjectPath).Path
+ if (-not (Test-Path -LiteralPath (Join-Path $destinationRoot 'compose.yaml'))) {
+     throw 'Select the existing project directory containing compose.yaml and .env.'
+@@ -8,7 +8,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $destinationRoot 'compose.yaml'))) {
+ if ($destinationRoot -eq $sourceRoot) {
+     throw 'Extract the update separately, then point ProjectPath at your existing project.'
+ }
+-$manifest = Get-Content -LiteralPath (Join-Path $sourceRoot 'SCANNER_GATEWAY_UPDATE.json') -Raw | ConvertFrom-Json
++$manifest = Get-Content -LiteralPath (Join-Path $sourceRoot 'docs/manifests/SCANNER_GATEWAY_UPDATE.json') -Raw | ConvertFrom-Json
+ $backup = Join-Path $destinationRoot ('scanner-backup-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+ foreach ($relative in $manifest.files) {
+     if ($relative -match '(^|[\\/])\.\.([\\/]|$)' -or [IO.Path]::IsPathRooted($relative) -or [IO.Path]::GetFileName($relative) -eq '.env') {
+@@ -17,6 +17,15 @@ foreach ($relative in $manifest.files) {
+     $source = Join-Path $sourceRoot $relative
+     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing update file: $relative" }
+ }
++foreach ($move in $manifest.relocations) {
++    if ($move.from -match '(^|[\\/])\.\.([\\/]|$)' -or [IO.Path]::IsPathRooted($move.from) -or [IO.Path]::GetFileName($move.from) -eq '.env') {
++        throw 'Invalid relocation path.'
++    }
++    # The destination must be one of the validated source files above.
++    if ($manifest.files -notcontains $move.to -and $move.to -ne 'docs/manifests/SCANNER_GATEWAY_UPDATE.json') {
++        throw 'Relocation destination is missing from the update.'
++    }
++}
+ # Back up existing versions before replacing any file. Never read or copy .env.
+ foreach ($relative in $manifest.files) {
+     $destination = Join-Path $destinationRoot $relative
+@@ -26,11 +35,25 @@ foreach ($relative in $manifest.files) {
+         Copy-Item -LiteralPath $destination -Destination $saved
+     }
+ }
++foreach ($move in $manifest.relocations) {
++    $old = Join-Path $destinationRoot $move.from
++    if (Test-Path -LiteralPath $old -PathType Leaf) {
++        $saved = Join-Path $backup $move.from
++        New-Item -ItemType Directory -Force -Path (Split-Path $saved -Parent) | Out-Null
++        Copy-Item -LiteralPath $old -Destination $saved
++    }
++}
+ foreach ($relative in $manifest.files) {
+     $destination = Join-Path $destinationRoot $relative
+     New-Item -ItemType Directory -Force -Path (Split-Path $destination -Parent) | Out-Null
+     Copy-Item -LiteralPath (Join-Path $sourceRoot $relative) -Destination $destination -Force
+ }
++Copy-Item -LiteralPath (Join-Path $sourceRoot 'docs/manifests/SCANNER_GATEWAY_UPDATE.json') -Destination (Join-Path $destinationRoot 'docs/manifests/SCANNER_GATEWAY_UPDATE.json') -Force
++# Remove old locations only after every new file has been copied and backed up.
++foreach ($move in $manifest.relocations) {
++    $old = Join-Path $destinationRoot $move.from
++    if (Test-Path -LiteralPath $old -PathType Leaf) { Remove-Item -LiteralPath $old }
++}
+ Write-Host "Updated $($manifest.files.Count) files. Existing .env and compose settings preserved."
+ Write-Host "Backup: $backup"
+-Write-Host 'Read PUBLIC_SCANNER_MCP.md, configure the matching ArmorIQ scanner policy, then rebuild Docker services.'
++Write-Host 'Read docs/PUBLIC_SCANNER_MCP.md, configure the matching ArmorIQ scanner policy, then rebuild Docker services.'
+diff --git a/start-demo.ps1 b/start-demo.ps1
+new file mode 100644
+index 0000000..807c6aa
+--- /dev/null
++++ b/start-demo.ps1
+@@ -0,0 +1,133 @@
++#Requires -Version 5.1
++[CmdletBinding()]
++param(
++    [switch]$CheckOnly,
++    [switch]$Stop,
++    [switch]$NoBuild,
++    [switch]$NoBrowser,
++    [switch]$NonInteractive,
++    [ValidateRange(30, 3600)][int]$WaitTimeoutSeconds = 300
++)
++
++$ErrorActionPreference = 'Stop'
++$ProjectRoot = $PSScriptRoot
++$EnvFile = Join-Path $ProjectRoot '.env'
++$ComposeArgs = @('compose', '--project-directory', $ProjectRoot, '--env-file', $EnvFile)
++foreach ($name in @('compose.yaml', 'compose.fixture.yaml', 'compose.motion.yaml', 'compose.mcp.yaml')) {
++    $file = Join-Path $ProjectRoot $name
++    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing Compose file: $name" }
++    $ComposeArgs += @('-f', $file)
++}
++
++function Invoke-Compose {
++    param([string[]]$Arguments, [switch]$Capture)
++    if ($Capture) {
++        # Effective config can contain keys. Keep it in memory and off the terminal.
++        $result = & docker @ComposeArgs @Arguments 2>$null
++        if ($LASTEXITCODE -ne 0) { throw 'Compose configuration failed. Check your local .env syntax and Compose files.' }
++        return ($result -join "`n")
++    }
++    & docker @ComposeArgs @Arguments
++    if ($LASTEXITCODE -ne 0) { throw 'Docker Compose failed. Inspect service status and logs using the commands in docs/SETUP.md.' }
++}
++
++function Get-DemoConfig {
++    $raw = Invoke-Compose -Arguments @('config', '--format', 'json') -Capture
++    return ($raw | ConvertFrom-Json)
++}
++
++function Test-ConfiguredKey {
++    param($Value)
++    $text = [string]$Value
++    return (-not [string]::IsNullOrWhiteSpace($text) -and $text -notmatch '^(your[-_]|replace[-_]|<)')
++}
++
++Push-Location -LiteralPath $ProjectRoot
++try {
++    if ($CheckOnly -and $Stop) { throw 'Choose either -CheckOnly or -Stop.' }
++    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Install Docker Desktop with Docker Compose, then start Docker Desktop.' }
++    & docker compose version
++    if ($LASTEXITCODE -ne 0) { throw 'Docker Compose is unavailable. Install/update Docker Desktop.' }
++
++    if (-not (Test-Path -LiteralPath $EnvFile)) {
++        if ($CheckOnly) {
++            # Validate with placeholders without creating .env or prompting for secrets.
++            # The base service env_file path needs .env to exist, so create a temporary
++            # copy for this check and remove it in finally.
++            Copy-Item -LiteralPath (Join-Path $ProjectRoot '.env.example') -Destination $EnvFile
++            $RemoveTemporaryEnv = $true
++        } elseif ($Stop) {
++            throw 'No .env exists for this deployment.'
++        } else {
++            Copy-Item -LiteralPath (Join-Path $ProjectRoot '.env.example') -Destination $EnvFile
++            Write-Host 'Created .env from the blank template. Existing configuration is never overwritten.'
++        }
++    }
++
++    $config = Get-DemoConfig
++    if ($Stop) {
++        Invoke-Compose -Arguments @('down', '--remove-orphans')
++        Write-Host 'Demo stopped. Evidence volumes were retained.'
++        return
++    }
++
++    if ($CheckOnly) {
++        Write-Host 'All four Compose files merged and validated successfully.'
++        if (-not (Test-ConfiguredKey $config.services.backend.environment.ARMORIQ_API_KEY)) {
++            Write-Warning 'ArmorIQ key is missing. Real scanning will block until configured.'
++        }
++        Write-Host 'Configuration check only: no containers, cloud decisions or target requests were started.'
++        return
++    }
++
++    $engine = (& docker info --format '{{.OSType}}' 2>$null) -join ''
++    if ($LASTEXITCODE -ne 0) { throw 'Docker Engine is unavailable. Start Docker Desktop and retry.' }
++    if ($engine.Trim() -ne 'linux') { throw 'Switch Docker Desktop to Linux containers and retry.' }
++
++    if (-not (Test-ConfiguredKey $config.services.backend.environment.ARMORIQ_API_KEY)) {
++        if ($NonInteractive) { throw 'Set ARMORIQ_API_KEY in .env before using -NonInteractive.' }
++        $secure = Read-Host 'ArmorIQ API key (hidden; saved only to your local .env)' -AsSecureString
++        $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
++        try {
++            $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
++            if (-not (Test-ConfiguredKey $plain) -or $plain -match "[\r\n'\x00]") { throw 'API key is empty or contains unsupported characters.' }
++            [IO.File]::AppendAllText($EnvFile, "`nARMORIQ_API_KEY='$plain'`n", (New-Object Text.UTF8Encoding($false)))
++        } finally {
++            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
++            $plain = $null
++            $secure = $null
++        }
++        $config = Get-DemoConfig
++    }
++    if ($config.services.'mcp-gateway'.environment.MCP_ARMORIQ_MODE -ne 'required') {
++        throw 'The enforced demo requires MCP_ARMORIQ_MODE=required. Update .env (and any overriding shell variable).'
++    }
++    if (-not (Test-ConfiguredKey $config.services.'mcp-gateway'.environment.ARMORIQ_API_KEY)) {
++        throw 'The MCP gateway ArmorIQ key is missing; check .env and shell overrides.'
++    }
++
++    $upHelp = (& docker compose up --help) -join "`n"
++    if ($LASTEXITCODE -ne 0 -or $upHelp -notmatch '--wait-timeout') { throw 'Update Docker Compose: this launcher needs up --wait and --wait-timeout.' }
++    $up = @('up', '-d', '--wait', '--wait-timeout', [string]$WaitTimeoutSeconds)
++    if (-not $NoBuild) { $up += '--build' }
++    Invoke-Compose -Arguments $up
++    Invoke-Compose -Arguments @('ps')
++
++    $null = Invoke-RestMethod -Uri 'http://127.0.0.1:8010/health' -TimeoutSec 10
++    $null = Invoke-WebRequest -Uri 'http://127.0.0.1:8502/' -UseBasicParsing -TimeoutSec 10
++    $null = Invoke-WebRequest -Uri 'http://127.0.0.1:8090/health' -UseBasicParsing -TimeoutSec 10
++    $ready = Invoke-RestMethod -Uri 'http://127.0.0.1:8010/scans/readiness' -TimeoutSec 10
++    if (-not $ready.prerequisites_ready) { throw 'Containers started but scanner prerequisites are not ready. Inspect Session readiness.' }
++    $gateway = Invoke-RestMethod -Uri 'http://127.0.0.1:8502/api/mcp/status' -TimeoutSec 10
++    if ($gateway.armoriq_mode -ne 'required' -or -not $gateway.armoriq_key_present) { throw 'DevOps MCP lab is not configured for required ArmorIQ enforcement.' }
++    Write-Host 'Ready: React http://localhost:8502 | Streamlit scanner http://127.0.0.1:8501'
++    Write-Host 'Scanner target inside Docker: http://fixture-lab:8090/'
++    Write-Host 'Cloud ALLOW/BLOCK has not been tested by startup. Each target request still needs an actual policy decision.'
++    if (-not $NoBrowser) { Start-Process 'http://localhost:8502' }
++} catch {
++    Write-Error ("AutoShield setup failed: " + $_.Exception.Message) -ErrorAction Continue
++    exit 1
++} finally {
++    if ($RemoveTemporaryEnv) { Remove-Item -LiteralPath $EnvFile -Force }
++    Pop-Location
++}
+diff --git a/tests/integration/README.md b/tests/integration/README.md
+new file mode 100644
+index 0000000..8e50887
+--- /dev/null
++++ b/tests/integration/README.md
+@@ -0,0 +1,13 @@
++# Live WAF integration tests
++
++These tests need the running Docker lab and send requests to ports 8080–8082.
++They are deliberately separate from the default unit-test discovery.
++
++```text
++python -m unittest discover -s tests/integration -v
++```
++
++An apostrophe regression may be reported as a known application issue. That
++does not establish a passing benign regression. HTTP 403 alone does not identify
++which WAF rule blocked the request; use `tests/verify_candidate_evidence.py`
++for hash and rule-ID attribution after installing candidate content.
+diff --git a/tests/test_candidate_waf.py b/tests/integration/test_candidate_waf.py
+similarity index 100%
+rename from tests/test_candidate_waf.py
+rename to tests/integration/test_candidate_waf.py
+diff --git a/tests/test_waf_baseline.py b/tests/integration/test_waf_baseline.py
+similarity index 100%
+rename from tests/test_waf_baseline.py
+rename to tests/integration/test_waf_baseline.py
+diff --git a/tests/powershell/test-start-demo.ps1 b/tests/powershell/test-start-demo.ps1
+new file mode 100644
+index 0000000..f5772b2
+--- /dev/null
++++ b/tests/powershell/test-start-demo.ps1
+@@ -0,0 +1,81 @@
++# Self-contained launcher tests: Docker and HTTP calls are mocked, never live.
++param([string]$Scenario = 'all')
++$ErrorActionPreference = 'Stop'
++if ($Scenario -eq 'all') {
++    $shellPath = Join-Path $PSHOME 'pwsh'
++    if (-not (Test-Path -LiteralPath $shellPath)) {
++        $shellPath = Join-Path $PSHOME 'pwsh.exe'
++    }
++    if (-not (Test-Path -LiteralPath $shellPath)) {
++        $shellPath = Join-Path $PSHOME 'powershell.exe'
++    }
++    foreach ($case in @('start', 'check', 'stop', 'missing-key', 'wrong-engine', 'up-fails', 'config-fails')) {
++        & $shellPath -NoProfile -File $PSCommandPath -Scenario $case
++        if ($LASTEXITCODE -ne 0) { throw "Launcher test failed: $case" }
++    }
++    Write-Host '7 launcher tests passed (mocked Docker/HTTP).'
++    exit 0
++}
++
++$source = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'start-demo.ps1'
++$temporary = Join-Path ([IO.Path]::GetTempPath()) ('autoshield test ' + [guid]::NewGuid().ToString('N'))
++$global:DemoCalls = New-Object System.Collections.ArrayList
++$global:DemoScenario = $Scenario
++New-Item -ItemType Directory -Path $temporary | Out-Null
++Copy-Item -LiteralPath $source -Destination $temporary
++foreach ($file in @('compose.yaml', 'compose.fixture.yaml', 'compose.motion.yaml', 'compose.mcp.yaml')) {
++    Set-Content -LiteralPath (Join-Path $temporary $file) -Value 'services: {}'
++}
++Set-Content -LiteralPath (Join-Path $temporary '.env.example') -Value 'ARMORIQ_API_KEY='
++if ($Scenario -ne 'check') { Set-Content -LiteralPath (Join-Path $temporary '.env') -Value '# preserved test configuration' }
++
++function global:docker {
++    [void]$global:DemoCalls.Add(($args -join '|'))
++    $global:LASTEXITCODE = 0
++    if ($args[0] -eq 'info') {
++        if ($global:DemoScenario -eq 'wrong-engine') { return 'windows' }
++        return 'linux'
++    }
++    if ($args -contains 'version') { return 'Docker Compose test double' }
++    if ($args -contains '--help') { return '--wait --wait-timeout' }
++    if ($args -contains 'config') {
++        if ($global:DemoScenario -eq 'config-fails') { $global:LASTEXITCODE = 1; return }
++        $key = 'fake-unit-test-key'
++        if ($global:DemoScenario -eq 'missing-key') { $key = '' }
++        return (@{services = @{
++            backend = @{environment = @{ARMORIQ_API_KEY = $key}}
++            'mcp-gateway' = @{environment = @{MCP_ARMORIQ_MODE = 'required'; ARMORIQ_API_KEY = $key}}
++        }} | ConvertTo-Json -Depth 6 -Compress)
++    }
++    if (($args -contains 'up') -and $global:DemoScenario -eq 'up-fails') { $global:LASTEXITCODE = 1 }
++}
++function global:Invoke-RestMethod {
++    param($Uri, $TimeoutSec)
++    if ($Uri -like '*/scans/readiness') { return @{prerequisites_ready = $true} }
++    if ($Uri -like '*/api/mcp/status') { return @{armoriq_mode = 'required'; armoriq_key_present = $true} }
++    return @{status = 'ok'}
++}
++function global:Invoke-WebRequest {
++    param($Uri, $TimeoutSec, [switch]$UseBasicParsing)
++    return @{StatusCode = 200}
++}
++
++try {
++    $global:LASTEXITCODE = 0
++    $launcherArgs = @{NonInteractive = $true; NoBrowser = $true; WaitTimeoutSeconds = 30}
++    if ($Scenario -eq 'check') { $launcherArgs.CheckOnly = $true }
++    if ($Scenario -eq 'stop') { $launcherArgs.Stop = $true }
++    & (Join-Path $temporary 'start-demo.ps1') @launcherArgs 2>$null
++    $failed = $LASTEXITCODE -ne 0
++    $expectedFailure = $Scenario -in @('missing-key', 'wrong-engine', 'up-fails', 'config-fails')
++    if ($failed -ne $expectedFailure) { throw "Unexpected exit status: $Scenario" }
++    $calls = $global:DemoCalls -join "`n"
++    if ($Scenario -eq 'start' -and $calls -notmatch 'up\|-d\|--wait\|--wait-timeout\|30\|--build') { throw 'Startup did not wait for health.' }
++    if ($Scenario -in @('check', 'missing-key', 'wrong-engine', 'config-fails') -and $calls -match '\|up\|-d') { throw 'Unexpected container startup.' }
++    if ($Scenario -eq 'check' -and (Test-Path -LiteralPath (Join-Path $temporary '.env'))) { throw 'Temporary .env was not removed.' }
++    if ($Scenario -eq 'stop' -and ($calls -notmatch '\|down\|--remove-orphans' -or $calls -match '\|(-v|--volumes)')) { throw 'Stop must retain evidence volumes.' }
++    if ($calls -match '\|up\|-d' -and $calls -notmatch 'compose.fixture.yaml.*compose.motion.yaml.*compose.mcp.yaml') { throw 'Missing Compose overlays.' }
++    Write-Host "PASS: $Scenario"
++} finally {
++    Remove-Item -LiteralPath $temporary -Recurse -Force
++}
+diff --git a/tests/test_mcp_gateway.py b/tests/test_mcp_gateway.py
+index b9ad3cd..29c44ae 100644
+--- a/tests/test_mcp_gateway.py
++++ b/tests/test_mcp_gateway.py
+@@ -121,7 +121,7 @@ class GatewayTests(unittest.TestCase):
+         with patch.dict(os.environ,{'MCP_WORKSPACE':self.tmp.name,'GROQ_API_KEY':'fake-secret'}):
+             result=execute('run_system_command',{'command_str':'pwd'})
+         self.assertEqual(result['exit_code'],0)
+-        self.assertEqual(result['stdout'].strip(),self.tmp.name)
++        self.assertEqual(Path(result['stdout'].strip()).resolve(),Path(self.tmp.name).resolve())
+     def test_budget(self):
+         self.run['calls']=8
+         self.assertEqual(self.guard.invoke(self.run,'read_system_metrics',{'metric_name':'uptime'})['decision'],'BLOCK')
+diff --git a/tests/test_mcp_portability.py b/tests/test_mcp_portability.py
+new file mode 100644
+index 0000000..9005ae9
+--- /dev/null
++++ b/tests/test_mcp_portability.py
+@@ -0,0 +1,123 @@
++import os
++from enum import Enum
++from pathlib import Path
++import sys
++import tempfile
++import unittest
++from types import SimpleNamespace
++from unittest.mock import Mock, patch
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
++import mcp_executor as executor
++from mcp_armoriq import ArmorGate
++
++
++class ExecutorPortabilityTests(unittest.TestCase):
++    def test_native_lab_fallback_and_real_fixed_commands(self):
++        with patch.dict(os.environ, {'MCP_WORKSPACE': ''}):
++            self.assertEqual(executor.workspace_path(), executor.LAB.resolve())
++            self.assertGreater(executor.execute('read_system_metrics', {'metric_name': 'disk'})['total_bytes'], 0)
++            for command in ('pwd', 'date -u', 'df -h /workspace'):
++                result = executor.execute('run_system_command', {'command_str': command})
++                self.assertEqual(result['exit_code'], 0, result['stderr'])
++                self.assertTrue(result['stdout'].strip())
++
++    def test_workspace_with_spaces_and_shell_metacharacters_is_data(self):
++        with tempfile.TemporaryDirectory(prefix="lab with spaces ' ") as temporary:
++            marker = Path(temporary) / 'should-not-exist'
++            with patch.dict(os.environ, {'MCP_WORKSPACE': temporary}):
++                result = executor.execute('run_system_command', {'command_str': 'df -h /workspace'})
++            self.assertEqual(result['exit_code'], 0, result['stderr'])
++            self.assertFalse(marker.exists())
++
++    def test_unknown_command_never_reaches_shell(self):
++        with patch.object(executor.subprocess, 'run') as run:
++            with self.assertRaises(PermissionError):
++                executor.execute('run_system_command', {'command_str': 'pwd; env'})
++            run.assert_not_called()
++
++    def test_child_receives_no_provider_keys_or_startup_hooks(self):
++        with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {
++            'MCP_WORKSPACE': temporary, 'ARMORIQ_API_KEY': 'do-not-inherit',
++            'GROQ_API_KEY': 'do-not-inherit', 'BASH_ENV': 'evil.sh', 'ENV': 'evil.sh'}), patch.object(executor.subprocess, 'run') as run:
++            run.return_value = Mock(returncode=0, stdout='ok', stderr='')
++            executor.execute('run_system_command', {'command_str': 'pwd'})
++            child = run.call_args.kwargs
++            self.assertFalse(child['shell'])
++            self.assertEqual(child['cwd'], Path(temporary).resolve())
++            for key in ('ARMORIQ_API_KEY', 'GROQ_API_KEY', 'BASH_ENV', 'ENV'):
++                self.assertNotIn(key, child['env'])
++
++    def test_missing_workspace_does_not_create_host_directories(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            missing = Path(temporary) / 'missing'
++            with patch.dict(os.environ, {'MCP_WORKSPACE': str(missing)}):
++                with self.assertRaises(RuntimeError): executor.workspace_path()
++            self.assertFalse(missing.exists())
++
++    def test_explicit_bash_path_must_be_absolute(self):
++        with patch.dict(os.environ, {'MCP_BASH_PATH': 'bash'}):
++            with self.assertRaises(RuntimeError): executor.bash_path()
++
++    def test_native_kernel_uptime_is_positive(self):
++        self.assertGreater(executor.kernel_uptime(), 0)
++
++    def test_windows_prefers_git_bash_and_retains_only_os_environment(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            bash = Path(temporary) / 'Git/bin/bash.exe'
++            bash.parent.mkdir(parents=True)
++            bash.touch()
++            env = {'ProgramFiles': temporary, 'SystemRoot': 'C:/Windows', 'GROQ_API_KEY': 'secret'}
++            windows = SimpleNamespace(name='nt', getenv=lambda key, default=None: env.get(key, default), environ=env, pathsep=';')
++            with patch.object(executor, 'os', windows), patch.object(executor.shutil, 'which', return_value=None):
++                self.assertEqual(executor.bash_path(), bash.resolve())
++                child = executor.command_environment(bash)
++            self.assertEqual(child['SystemRoot'], 'C:/Windows')
++            self.assertIn(';', child['PATH'])
++            self.assertNotIn('GROQ_API_KEY', child)
++
++    def test_windows_wsl_launcher_is_not_a_git_bash_fallback(self):
++        with tempfile.TemporaryDirectory() as temporary:
++            wsl = Path(temporary) / 'System32/bash.exe'
++            wsl.parent.mkdir()
++            wsl.touch()
++            env = {'ProgramFiles': str(Path(temporary) / 'missing')}
++            windows = SimpleNamespace(name='nt', getenv=lambda key, default=None: env.get(key, default), environ=env, pathsep=';')
++            with patch.object(executor, 'os', windows), patch.object(executor.shutil, 'which', side_effect=lambda name: str(wsl) if name == 'bash' else None):
++                with self.assertRaises(RuntimeError): executor.bash_path()
++
++
++class ArmorCompatibilityTests(unittest.TestCase):
++    class Action(Enum):
++        ALLOW = 'allow'
++        HOLD = 'hold'
++
++    def gate(self, result):
++        # Construct an already-open adapter without contacting the provider.
++        gate = ArmorGate.__new__(ArmorGate)
++        gate.client, gate.session, gate.token = Mock(), Mock(), Mock()
++        gate.state = 'plan_created'
++        gate.session.check.return_value = result
++        return gate
++
++    def test_enum_and_string_actions_keep_strict_allow_semantics(self):
++        for action, allowed, expected in ((self.Action.ALLOW, True, True),
++                ('allow', True, True), (self.Action.HOLD, True, False),
++                ('block', True, False), ('unexpected', True, False), ('allow', 'true', False)):
++            with self.subTest(action=action, allowed=allowed):
++                gate = self.gate(Mock(action=action, allowed=allowed))
++                self.assertEqual(gate.check('read_system_metrics', {'metric_name': 'uptime'})[0], expected)
++
++    def test_close_is_idempotent_and_closed_gate_cannot_allow(self):
++        gate = self.gate(Mock(action='allow', allowed=True))
++        client, session = gate.client, gate.session
++        self.assertEqual(gate.close(), 'completed')
++        self.assertEqual(gate.close(), 'not_applicable')
++        session.close.assert_called_once()
++        client.complete_plan.assert_called_once()
++        self.assertFalse(gate.check('read_system_metrics', {'metric_name': 'uptime'})[0])
++
++    def test_blank_key_stays_unavailable(self):
++        with patch.dict(os.environ, {'MCP_ARMORIQ_MODE': 'required', 'ARMORIQ_API_KEY': '   '}):
++            gate = ArmorGate('blank-key-test')
++            self.assertFalse(gate.check('read_system_metrics', {'metric_name': 'uptime'})[0])
+diff --git a/tests/test_rule_compiler.py b/tests/test_rule_compiler.py
+new file mode 100644
+index 0000000..fbdfa8f
+--- /dev/null
++++ b/tests/test_rule_compiler.py
+@@ -0,0 +1,59 @@
++import hashlib
++import json
++from pathlib import Path
++import sqlite3
++import sys
++import tempfile
++import unittest
++from unittest.mock import patch
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
++import proposals
++from rule_compiler import compile_proposal, ALLOWED_SCOPE
++
++
++class CompilerBoundaryTests(unittest.TestCase):
++    def setUp(self):
++        self.temporary = tempfile.TemporaryDirectory()
++        self.database = str(Path(self.temporary.name) / 'compiler.db')
++        self.patch = patch.object(proposals, 'DB_PATH', self.database)
++        self.patch.start()
++        with sqlite3.connect(self.database) as db:
++            db.execute('CREATE TABLE proposals (id INTEGER PRIMARY KEY, policy TEXT)')
++        self.policy = {'schema_version': '1.0', 'source': 'trusted_template',
++            'attack_type': 'SQL injection', 'scope': dict(ALLOWED_SCOPE),
++            'proposed_action': 'deny', 'proposed_http_status': 403,
++            'template_ids': ['search_numeric_tautology_v1']}
++
++    def tearDown(self):
++        self.patch.stop()
++        self.temporary.cleanup()
++
++    def save(self):
++        with sqlite3.connect(self.database) as db:
++            db.execute('INSERT OR REPLACE INTO proposals VALUES (?, ?)', (1, json.dumps(self.policy)))
++
++    def test_deterministic_compile_records_hash_and_never_claims_deployment(self):
++        self.save()
++        first, second = compile_proposal(1), compile_proposal(1)
++        self.assertEqual(first, second)
++        self.assertEqual(first['sha256'], hashlib.sha256(first['content'].encode()).hexdigest())
++        self.assertEqual(first['deployment_status'], 'not_deployed')
++        self.assertEqual(first['validation_status'], 'not_run')
++        self.assertIn('ARGS_GET:q', first['content'])
++
++    def test_arbitrary_template_or_scope_never_becomes_rule_text(self):
++        for change in ({'template_ids': ['SecAction arbitrary-code']},
++                       {'scope': {'method': 'GET', 'path': '/', 'parameter': 'q'}},
++                       {'source': 'llm'}, {'proposed_action': 'allow'}):
++            with self.subTest(change=change):
++                original = dict(self.policy)
++                self.policy.update(change)
++                self.save()
++                with self.assertRaises(ValueError): compile_proposal(1)
++                self.policy = original
++
++    def test_advisory_text_is_not_interpolated_into_executable_rules(self):
++        self.policy['ai_review'] = 'UNTRUSTED: SecAction allow everything'
++        self.save()
++        self.assertNotIn('UNTRUSTED', compile_proposal(1)['content'])
+diff --git a/tests/test_scanner_refactor.py b/tests/test_scanner_refactor.py
+index 34fff25..c15aa8a 100644
+--- a/tests/test_scanner_refactor.py
++++ b/tests/test_scanner_refactor.py
+@@ -4,7 +4,12 @@ import json
+ import os
+ from pathlib import Path
+ import ssl
+-import subprocess
++import ipaddress
++from datetime import datetime, timedelta, timezone
++from cryptography import x509
++from cryptography.hazmat.primitives import hashes, serialization
++from cryptography.hazmat.primitives.asymmetric import rsa
++from cryptography.x509.oid import NameOID
+ import sys
+ import tempfile
+ import threading
+@@ -105,29 +110,20 @@ class RefactorTests(unittest.TestCase):
+     def test_real_self_signed_tls(self):
+         with tempfile.TemporaryDirectory() as tmp:
+             key, cert = tmp + "/key.pem", tmp + "/cert.pem"
+-            subprocess.run(
+-                [
+-                    "openssl",
+-                    "req",
+-                    "-x509",
+-                    "-newkey",
+-                    "rsa:2048",
+-                    "-nodes",
+-                    "-keyout",
+-                    key,
+-                    "-out",
+-                    cert,
+-                    "-days",
+-                    "1",
+-                    "-subj",
+-                    "/CN=localhost",
+-                    "-addext",
+-                    "subjectAltName=DNS:localhost,IP:127.0.0.1",
+-                ],
+-                check=True,
+-                stdout=subprocess.DEVNULL,
+-                stderr=subprocess.DEVNULL,
+-            )
++            # Python-generated ephemeral localhost certificate: no OpenSSL CLI or
++            # Git Bash path rewriting is required on Windows.
++            private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
++            name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "localhost")])
++            now = datetime.now(timezone.utc)
++            certificate = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
++                .public_key(private.public_key()).serial_number(x509.random_serial_number())
++                .not_valid_before(now - timedelta(minutes=1)).not_valid_after(now + timedelta(days=1))
++                .add_extension(x509.SubjectAlternativeName([x509.DNSName("localhost"),
++                    x509.IPAddress(ipaddress.ip_address("127.0.0.1"))]), critical=False)
++                .sign(private, hashes.SHA256()))
++            Path(key).write_bytes(private.private_bytes(serialization.Encoding.PEM,
++                serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
++            Path(cert).write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+             server = ThreadingHTTPServer(("127.0.0.1", 0), Site)
+             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+             context.load_cert_chain(cert, key)
+diff --git a/tests/verify_candidate_evidence.py b/tests/verify_candidate_evidence.py
+index 0e08ca9..27995f7 100644
+--- a/tests/verify_candidate_evidence.py
++++ b/tests/verify_candidate_evidence.py
+@@ -1,216 +1,216 @@
+-import hashlib
+-import json
+-import subprocess
+-import sys
+-import uuid
+-from datetime import datetime, timezone
+-from urllib.error import HTTPError
+-from urllib.parse import parse_qs, urlencode, urlsplit
+-from urllib.request import (
+-    HTTPRedirectHandler,
+-    ProxyHandler,
+-    Request,
+-    build_opener,
+-)
+-
+-
+-RULE_PATH = (
+-    "/etc/modsecurity.d/owasp-crs/rules/"
+-    "REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"
+-)
+-
+-
+-class NoRedirects(HTTPRedirectHandler):
+-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+-        return None
+-
+-
+-OPENER = build_opener(
+-    ProxyHandler({}),
+-    NoRedirects(),
+-)
+-
+-
+-def command(*args):
+-    result = subprocess.run(
+-        args,
+-        capture_output=True,
+-        text=True,
+-        encoding="utf-8",
+-        errors="replace",
+-        timeout=30,
+-    )
+-
+-    if result.returncode != 0:
+-        raise RuntimeError(
+-            f"Command failed: {' '.join(args)}\n"
+-            f"{result.stdout}\n{result.stderr}"
+-        )
+-
+-    return result.stdout, result.stderr
+-
+-
+-def read_rule_hash(container_id):
+-    output, _ = command(
+-        "docker", "exec", container_id,
+-        "sha256sum", RULE_PATH,
+-    )
+-    return output.split()[0].lower()
+-
+-
+-def run(proposal_id):
+-    with OPENER.open(
+-        f"http://127.0.0.1:8000/proposals/{proposal_id}/compiled",
+-        timeout=10,
+-    ) as response:
+-        compiled = json.load(response)
+-
+-    expected_hash = compiled["sha256"]
+-    content_hash = hashlib.sha256(
+-        compiled["content"].encode("utf-8")
+-    ).hexdigest()
+-
+-    if content_hash != expected_hash:
+-        raise RuntimeError("Compiler content and returned hash disagree")
+-
+-    expected_ids = {str(value) for value in compiled["rule_ids"]}
+-
+-    output, _ = command(
+-        "docker", "compose", "ps", "-q", "candidate-waf"
+-    )
+-    container_id = output.strip()
+-
+-    if not container_id:
+-        raise RuntimeError("Candidate WAF is not running")
+-
+-    output, _ = command("docker", "inspect", container_id)
+-    container_info = json.loads(output)[0]
+-
+-    before_hash = read_rule_hash(container_id)
+-
+-    if before_hash != expected_hash:
+-        raise RuntimeError(
+-            "Candidate rule file does not match this proposal.\n"
+-            f"Expected: {expected_hash}\n"
+-            f"Found:    {before_hash}"
+-        )
+-
+-    syntax_stdout, syntax_stderr = command(
+-        "docker", "exec", container_id, "nginx", "-t"
+-    )
+-
+-    started_at = datetime.now(timezone.utc).isoformat()
+-    probe_id = uuid.uuid4().hex
+-
+-    query = urlencode({
+-        "q": "' OR 1=1--",
+-        "_autoshield_probe": probe_id,
+-    })
+-
+-    request = Request(
+-        f"http://127.0.0.1:8082/rest/products/search?{query}",
+-        headers={
+-            "User-Agent": "AutoShield-Evidence-Probe/0.1",
+-            "Accept": "application/json",
+-        },
+-    )
+-
+-    try:
+-        with OPENER.open(request, timeout=10) as response:
+-            http_status = response.status
+-    except HTTPError as exc:
+-        http_status = exc.code
+-        exc.close()
+-
+-    stdout, stderr = command(
+-        "docker", "logs",
+-        "--since", started_at,
+-        container_id,
+-    )
+-
+-    matching_transactions = []
+-
+-    for line in (stdout + "\n" + stderr).splitlines():
+-        try:
+-            audit = json.loads(line)
+-        except ValueError:
+-            continue
+-
+-        if not isinstance(audit, dict):
+-            continue
+-
+-        transaction = audit.get("transaction", {})
+-        uri = transaction.get("request", {}).get("uri", "")
+-        parameters = parse_qs(urlsplit(uri).query)
+-
+-        if parameters.get("_autoshield_probe") != [probe_id]:
+-            continue
+-
+-        matched_ids = {
+-            str(message.get("details", {}).get("ruleId"))
+-            for message in transaction.get("messages", [])
+-        }
+-
+-        matching_transactions.append({
+-            "transaction_id": transaction.get("unique_id"),
+-            "http_status": transaction.get("response", {}).get("http_code"),
+-            "interrupted": transaction.get("is_interrupted"),
+-            "matched_rule_ids": sorted(matched_ids),
+-            "matched_candidate_rule_ids": sorted(
+-                matched_ids & expected_ids
+-            ),
+-        })
+-
+-    after_hash = read_rule_hash(container_id)
+-
+-    attributed = any(
+-        item["http_status"] == 403
+-        and item["interrupted"] is True
+-        and item["matched_candidate_rule_ids"]
+-        for item in matching_transactions
+-    )
+-
+-    verified = (
+-        http_status == 403
+-        and before_hash == after_hash == expected_hash
+-        and attributed
+-    )
+-
+-    report = {
+-        "proposal_id": proposal_id,
+-        "probe_id": probe_id,
+-        "checked_at": started_at,
+-        "container_id": container_id,
+-        "container_image_id": container_info["Image"],
+-        "expected_compiled_sha256": expected_hash,
+-        "rule_file_sha256_before": before_hash,
+-        "rule_file_sha256_after": after_hash,
+-        "syntax_check": "passed",
+-        "syntax_output": (syntax_stdout + syntax_stderr).strip(),
+-        "probe_http_status": http_status,
+-        "audit_transactions": matching_transactions,
+-        "candidate_match_verified": bool(verified),
+-        "scope": "Rule-file integrity and one numeric SQLi probe",
+-        "full_validation_complete": False,
+-    }
+-
+-    print(json.dumps(report, indent=2))
+-
+-    if not verified:
+-        print(
+-            "\nEvidence check incomplete or failed. "
+-            "Inspect the candidate WAF logs.",
+-            file=sys.stderr,
+-        )
+-        return 1
+-
+-    return 0
+-
+-
+-if __name__ == "__main__":
+-    try:
+-        selected_proposal = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+-        sys.exit(run(selected_proposal))
+-    except Exception as exc:
+-        print(f"Evidence check failed: {exc}", file=sys.stderr)
++import hashlib
++import json
++import subprocess
++import sys
++import uuid
++from datetime import datetime, timezone
++from urllib.error import HTTPError
++from urllib.parse import parse_qs, urlencode, urlsplit
++from urllib.request import (
++    HTTPRedirectHandler,
++    ProxyHandler,
++    Request,
++    build_opener,
++)
++
++
++RULE_PATH = (
++    "/etc/modsecurity.d/owasp-crs/rules/"
++    "REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"
++)
++
++
++class NoRedirects(HTTPRedirectHandler):
++    def redirect_request(self, req, fp, code, msg, headers, newurl):
++        return None
++
++
++OPENER = build_opener(
++    ProxyHandler({}),
++    NoRedirects(),
++)
++
++
++def command(*args):
++    result = subprocess.run(
++        args,
++        capture_output=True,
++        text=True,
++        encoding="utf-8",
++        errors="replace",
++        timeout=30,
++    )
++
++    if result.returncode != 0:
++        raise RuntimeError(
++            f"Command failed: {' '.join(args)}\n"
++            f"{result.stdout}\n{result.stderr}"
++        )
++
++    return result.stdout, result.stderr
++
++
++def read_rule_hash(container_id):
++    output, _ = command(
++        "docker", "exec", container_id,
++        "sha256sum", RULE_PATH,
++    )
++    return output.split()[0].lower()
++
++
++def run(proposal_id):
++    with OPENER.open(
++        f"http://127.0.0.1:8010/proposals/{proposal_id}/compiled",
++        timeout=10,
++    ) as response:
++        compiled = json.load(response)
++
++    expected_hash = compiled["sha256"]
++    content_hash = hashlib.sha256(
++        compiled["content"].encode("utf-8")
++    ).hexdigest()
++
++    if content_hash != expected_hash:
++        raise RuntimeError("Compiler content and returned hash disagree")
++
++    expected_ids = {str(value) for value in compiled["rule_ids"]}
++
++    output, _ = command(
++        "docker", "compose", "ps", "-q", "candidate-waf"
++    )
++    container_id = output.strip()
++
++    if not container_id:
++        raise RuntimeError("Candidate WAF is not running")
++
++    output, _ = command("docker", "inspect", container_id)
++    container_info = json.loads(output)[0]
++
++    before_hash = read_rule_hash(container_id)
++
++    if before_hash != expected_hash:
++        raise RuntimeError(
++            "Candidate rule file does not match this proposal.\n"
++            f"Expected: {expected_hash}\n"
++            f"Found:    {before_hash}"
++        )
++
++    syntax_stdout, syntax_stderr = command(
++        "docker", "exec", container_id, "nginx", "-t"
++    )
++
++    started_at = datetime.now(timezone.utc).isoformat()
++    probe_id = uuid.uuid4().hex
++
++    query = urlencode({
++        "q": "' OR 1=1--",
++        "_autoshield_probe": probe_id,
++    })
++
++    request = Request(
++        f"http://127.0.0.1:8082/rest/products/search?{query}",
++        headers={
++            "User-Agent": "AutoShield-Evidence-Probe/0.1",
++            "Accept": "application/json",
++        },
++    )
++
++    try:
++        with OPENER.open(request, timeout=10) as response:
++            http_status = response.status
++    except HTTPError as exc:
++        http_status = exc.code
++        exc.close()
++
++    stdout, stderr = command(
++        "docker", "logs",
++        "--since", started_at,
++        container_id,
++    )
++
++    matching_transactions = []
++
++    for line in (stdout + "\n" + stderr).splitlines():
++        try:
++            audit = json.loads(line)
++        except ValueError:
++            continue
++
++        if not isinstance(audit, dict):
++            continue
++
++        transaction = audit.get("transaction", {})
++        uri = transaction.get("request", {}).get("uri", "")
++        parameters = parse_qs(urlsplit(uri).query)
++
++        if parameters.get("_autoshield_probe") != [probe_id]:
++            continue
++
++        matched_ids = {
++            str(message.get("details", {}).get("ruleId"))
++            for message in transaction.get("messages", [])
++        }
++
++        matching_transactions.append({
++            "transaction_id": transaction.get("unique_id"),
++            "http_status": transaction.get("response", {}).get("http_code"),
++            "interrupted": transaction.get("is_interrupted"),
++            "matched_rule_ids": sorted(matched_ids),
++            "matched_candidate_rule_ids": sorted(
++                matched_ids & expected_ids
++            ),
++        })
++
++    after_hash = read_rule_hash(container_id)
++
++    attributed = any(
++        item["http_status"] == 403
++        and item["interrupted"] is True
++        and item["matched_candidate_rule_ids"]
++        for item in matching_transactions
++    )
++
++    verified = (
++        http_status == 403
++        and before_hash == after_hash == expected_hash
++        and attributed
++    )
++
++    report = {
++        "proposal_id": proposal_id,
++        "probe_id": probe_id,
++        "checked_at": started_at,
++        "container_id": container_id,
++        "container_image_id": container_info["Image"],
++        "expected_compiled_sha256": expected_hash,
++        "rule_file_sha256_before": before_hash,
++        "rule_file_sha256_after": after_hash,
++        "syntax_check": "passed",
++        "syntax_output": (syntax_stdout + syntax_stderr).strip(),
++        "probe_http_status": http_status,
++        "audit_transactions": matching_transactions,
++        "candidate_match_verified": bool(verified),
++        "scope": "Rule-file integrity and one numeric SQLi probe",
++        "full_validation_complete": False,
++    }
++
++    print(json.dumps(report, indent=2))
++
++    if not verified:
++        print(
++            "\nEvidence check incomplete or failed. "
++            "Inspect the candidate WAF logs.",
++            file=sys.stderr,
++        )
++        return 1
++
++    return 0
++
++
++if __name__ == "__main__":
++    try:
++        selected_proposal = int(sys.argv[1]) if len(sys.argv) > 1 else 1
++        sys.exit(run(selected_proposal))
++    except Exception as exc:
++        print(f"Evidence check failed: {exc}", file=sys.stderr)
+         sys.exit(1)
+\ No newline at end of file

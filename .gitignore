@@ -1,0 +1,31 @@
+.env
+.env.*
+!.env.example
+
+# Python bytecode and local tooling
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime data created by the backend and deployment controller
+*.db
+*.db-*
+deployment/state.json
+deployment/*.lock
+deployment/backup-*.conf
+
+# Local logs and generated reports
+*.log
+*.jsonl
+# Local scanner data and exports
+data/
+autoshield-scan-*.json
+
+# Frontend build tooling
+node_modules/
+dist/
+
+# Required synthetic MCP demo fixtures
+!backend/mcp_lab/ops.log
+!backend/mcp_lab/injection.log

@@ -1,0 +1,38 @@
+# Merge with existing compose files. Does not overwrite .env or scanner port bindings.
+services:
+  mcp-gateway:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.mcp
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      ARMORIQ_API_KEY: ${ARMORIQ_API_KEY:-}
+      MCP_ARMORIQ_MODE: ${MCP_ARMORIQ_MODE:-required}
+      MCP_SEMANTIC_MODE: ${MCP_SEMANTIC_MODE:-disabled}
+      MCP_AUDIT_DB: /data/mcp-audit.db
+    depends_on:
+      fixture-lab:
+        condition: service_healthy
+    volumes:
+      - mcp_audit:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 384m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8011/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+  motion-ui:
+    depends_on:
+      mcp-gateway:
+        condition: service_healthy
+volumes:
+  mcp_audit:

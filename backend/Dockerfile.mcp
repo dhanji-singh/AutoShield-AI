@@ -1,0 +1,13 @@
+FROM python:3.12-slim
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MCP_WORKSPACE=/workspace
+COPY requirements-mcp.txt .
+RUN pip install --no-cache-dir -r requirements-mcp.txt \
+    && useradd --uid 10001 --create-home appuser \
+    && mkdir -p /data /workspace \
+    && chown appuser:appuser /data /workspace
+COPY mcp_*.py ./
+COPY mcp_lab ./mcp_lab
+USER appuser
+EXPOSE 8011
+CMD ["python", "-m", "uvicorn", "mcp_server:app", "--host", "0.0.0.0", "--port", "8011", "--workers", "1", "--no-access-log"]

@@ -1,0 +1,29 @@
+﻿{
+  "proposal_id": 1,
+  "probe_id": "822bd4ed3d2d4bbfb627a4cf2df8c347",
+  "checked_at": "2026-09-13T11:19:03.438717+00:00",
+  "container_id": "f424d1c52aea6f11693dfcfde5eb96e6548adf227263bb5c5c89d61d7a9c7880",
+  "container_image_id": "sha256:1cf0a567e88e3b71862a3bc009dcc28ee620971cc672aa564872a3052edb5680",
+  "expected_compiled_sha256": "23cfc73a270d3736b1a101101da6253e18f309bb466541382d52153ece368792",
+  "rule_file_sha256_before": "23cfc73a270d3736b1a101101da6253e18f309bb466541382d52153ece368792",
+  "rule_file_sha256_after": "23cfc73a270d3736b1a101101da6253e18f309bb466541382d52153ece368792",
+  "syntax_check": "passed",
+  "syntax_output": "2026/09/13 11:19:02 [warn] 4481#4481: \"ssl_stapling\" ignored, issuer certificate not found for certificate \"/etc/nginx/conf/server.crt\"\nnginx: [warn] \"ssl_stapling\" ignored, issuer certificate not found for certificate \"/etc/nginx/conf/server.crt\"\n2026/09/13 11:19:02 [notice] 4481#4481: ModSecurity-nginx v1.0.4 (rules loaded inline/local/remote: 0/930/0)\n2026/09/13 11:19:02 [notice] 4481#4481: libmodsecurity3 version 3.0.16\nnginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful",
+  "probe_http_status": 403,
+  "audit_transactions": [
+    {
+      "transaction_id": "178929834339.519383",
+      "http_status": 403,
+      "interrupted": true,
+      "matched_rule_ids": [
+        "1100011"
+      ],
+      "matched_candidate_rule_ids": [
+        "1100011"
+      ]
+    }
+  ],
+  "candidate_match_verified": true,
+  "scope": "Rule-file integrity and one numeric SQLi probe",
+  "full_validation_complete": false
+}

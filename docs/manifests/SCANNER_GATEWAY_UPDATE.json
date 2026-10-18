@@ -1,0 +1,129 @@
+{
+  "files": [
+    "docs/PUBLIC_SCANNER_MCP.md",
+    "docs/README.md",
+    "docs/SCANNER_GUIDE.md",
+    "docs/archive/SCANNER_REFACTOR.md",
+    "backend/Dockerfile",
+    "backend/requirements.txt",
+    "backend/scan_api.py",
+    "backend/scan_engine.py",
+    "backend/scan_gateway_policy.py",
+    "backend/scan_mcp_client.py",
+    "backend/scan_mcp_server.py",
+    "frontend/scanner_ui.py",
+    "motion-ui/src/main.jsx",
+    "tests/test_scan_authorization.py",
+    "tests/test_scan_mcp.py",
+    ".env.example",
+    "docs/DEMO_SCRIPT.md",
+    "docs/archive/FINAL_TOUCHES.md",
+    "backend/mcp_armoriq.py",
+    "backend/mcp_server.py",
+    "motion-ui/src/McpGateway.jsx",
+    "motion-ui/src/style.css",
+    "motion-ui/src/findings.js",
+    "motion-ui/src/findings.test.js",
+    "tests/test_scan_readiness.py",
+    "tests/test_mcp_gateway.py",
+    ".gitignore",
+    "start-demo.ps1",
+    "scripts/Apply-Update.ps1",
+    "docs/SETUP.md",
+    "docs/ARCHITECTURE.md",
+    "docs/FINAL_REVIEW.md",
+    "backend/mcp_executor.py",
+    "backend/Dockerfile.mcp",
+    "backend/mcp_lab/Dockerfile.mcp",
+    "tests/test_mcp_portability.py",
+    "tests/test_rule_compiler.py",
+    "tests/test_scanner_refactor.py",
+    "tests/powershell/test-start-demo.ps1",
+    "tests/integration/test_candidate_waf.py",
+    "tests/integration/test_waf_baseline.py",
+    "tests/integration/README.md",
+    "deploy_lab.py",
+    "tests/verify_candidate_evidence.py",
+    "docs/manifests/MCP_UPDATE_MANIFEST.json",
+    "README.md",
+    "docs/archive/UPDATE_MCP_GATEWAY.md",
+    "docs/archive/UPDATE_LAB_WORKSPACE.md",
+    "docs/archive/UPDATE_ACTIVITY.md",
+    "docs/archive/UPDATE_EXISTING_PROJECT.md",
+    "docs/archive/UPDATE_SCANNER_UI.md",
+    "docs/archive/MOTION_UI_GUIDE.md"
+  ],
+  "preserve": [
+    ".env",
+    "compose.yaml",
+    "compose.fixture.yaml",
+    "compose.motion.yaml",
+    "compose.mcp.yaml"
+  ],
+  "relocations": [
+    {
+      "from": "DEMO_SCRIPT.md",
+      "to": "docs/DEMO_SCRIPT.md"
+    },
+    {
+      "from": "PUBLIC_SCANNER_MCP.md",
+      "to": "docs/PUBLIC_SCANNER_MCP.md"
+    },
+    {
+      "from": "SCANNER_GUIDE.md",
+      "to": "docs/SCANNER_GUIDE.md"
+    },
+    {
+      "from": "SCANNER_REFACTOR.md",
+      "to": "docs/archive/SCANNER_REFACTOR.md"
+    },
+    {
+      "from": "UPDATE_MCP_GATEWAY.md",
+      "to": "docs/archive/UPDATE_MCP_GATEWAY.md"
+    },
+    {
+      "from": "FINAL_TOUCHES.md",
+      "to": "docs/archive/FINAL_TOUCHES.md"
+    },
+    {
+      "from": "UPDATE_LAB_WORKSPACE.md",
+      "to": "docs/archive/UPDATE_LAB_WORKSPACE.md"
+    },
+    {
+      "from": "UPDATE_ACTIVITY.md",
+      "to": "docs/archive/UPDATE_ACTIVITY.md"
+    },
+    {
+      "from": "UPDATE_EXISTING_PROJECT.md",
+      "to": "docs/archive/UPDATE_EXISTING_PROJECT.md"
+    },
+    {
+      "from": "UPDATE_SCANNER_UI.md",
+      "to": "docs/archive/UPDATE_SCANNER_UI.md"
+    },
+    {
+      "from": "MOTION_UI_GUIDE.md",
+      "to": "docs/archive/MOTION_UI_GUIDE.md"
+    },
+    {
+      "from": "MCP_UPDATE_MANIFEST.json",
+      "to": "docs/manifests/MCP_UPDATE_MANIFEST.json"
+    },
+    {
+      "from": "SCANNER_GATEWAY_UPDATE.json",
+      "to": "docs/manifests/SCANNER_GATEWAY_UPDATE.json"
+    },
+    {
+      "from": "Apply-Update.ps1",
+      "to": "scripts/Apply-Update.ps1"
+    },
+    {
+      "from": "tests/test_candidate_waf.py",
+      "to": "tests/integration/test_candidate_waf.py"
+    },
+    {
+      "from": "tests/test_waf_baseline.py",
+      "to": "tests/integration/test_waf_baseline.py"
+    }
+  ]
+}

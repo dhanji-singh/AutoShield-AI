@@ -1,0 +1,21 @@
+{
+  "deployment_id": "38e9bf05f03147df8296a8eef465d8aa",
+  "mode": "local_lab_demo",
+  "status": "active",
+  "validation_run_id": 4,
+  "proposal_id": 1,
+  "previous_sha256": "15f8d900ffffff18870ab451d99b8a15cc5494f7c5fc105b4b64bb9b9b9c2f4f",
+  "candidate_sha256": "23cfc73a270d3736b1a101101da6253e18f309bb466541382d52153ece368792",
+  "backup_file": "backup-38e9bf05f03147df8296a8eef465d8aa.conf",
+  "created_at": "2026-09-14T16:09:14.654877+00:00",
+  "production_ready": false,
+  "promotion_evidence": {
+    "probe_id": "2d36d3c80dcf44f6b388cf5bfa81c53d",
+    "transaction_id": "178940215969.319003",
+    "matched_rule_ids": [
+      "1100011"
+    ],
+    "verified_at": "2026-09-14T16:09:19.859772+00:00"
+  },
+  "activated_at": "2026-09-14T16:09:19.859797+00:00"
+}

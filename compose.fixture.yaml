@@ -1,0 +1,18 @@
+services:
+  backend:
+    environment:
+      AUTOSHIELD_LAB_ORIGINS: ${AUTOSHIELD_LAB_ORIGINS:-http://proxy,http://fixture-lab:8090}
+  fixture-lab:
+    build: ./fixture-lab
+    ports:
+      - "127.0.0.1:8090:8090"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

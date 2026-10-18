@@ -1,0 +1,22 @@
+{
+  "backend/mcp_ai.py": "32135d54a5344cb9e8bd7c11559fc2e91e23b17668059e5560b0fcaa57b7e012",
+  "backend/mcp_armoriq.py": "29ea4597cfba70e7456a94fb509b21582c4cd3a6a758b7fe8058748fc5afdfcb",
+  "backend/mcp_audit.py": "06c08cbdf3e1a998a9205a0421d9e120a13db6d819bcc2533c664fd6477db66f",
+  "backend/mcp_executor.py": "3fe72363d3b43bd6d0033089600b03deba45b186e417e76e51338a0ee5e0565c",
+  "backend/mcp_guard.py": "63fb340e4dc6599c75a26532e163fe21f592a2ea2f350180270a17cf514b224c",
+  "backend/mcp_policy.py": "5da7b1259c220709ba87adc53da511050a927a4d154cb4ef2b8b11a0402340f3",
+  "backend/mcp_server.py": "677cf597944fd35daa1dce5a0e25c64c226b37ca81bfe2dc6a42162e875cee11",
+  "backend/mcp_smoke.py": "91db73774b4cbb46bca7d21855147a2de7d7b490a4efee9e7d6a1eafc2157802",
+  "backend/mcp_lab/injection.log": "5aa7025f085ecc10c6aa82d21fbe691cd0ad4e9755803508520e4d9e34bb201d",
+  "backend/mcp_lab/ops.log": "dd375e47e878540dae6814b34bc87fc537f1c8078ee848378af644dd142b39e7",
+  "backend/Dockerfile.mcp": "15cf98afdbd5bfe97541fc876b13baf02f7fd5c5344f9e266530555ede87d1d0",
+  "backend/requirements-mcp.txt": "30472803612583447db1e680413abef0b95ac81dbbdaa25ad056d86f49a2cb98",
+  "compose.mcp.yaml": "595e6be105f8a04d75b7a21c23f8ae8897d0b075296b83d6c4aa816a9cecddba",
+  "motion-ui/src/main.jsx": "5816b164cb0aea1b77b36d32dfa892de6442c7297efee091dd5766c0458c16da",
+  "motion-ui/src/McpGateway.jsx": "c86002a4e879e6963c754df7bf6ad90f4fd4265ba0ba8338b98ce22a88655613",
+  "motion-ui/src/mcp.css": "56448471b3cc2c0c840541bfbb9d68804cb341698864f98551a4f685a9e1dada",
+  "motion-ui/nginx.conf": "94f943cf460b78e565228b13c1bac52a03304a119e63dc11942a6a70f6f09b23",
+  "motion-ui/vite.config.js": "b03cd5d2b3a7f53816588e36a68e5bcafd8f5eed272b7f5e9b4856b622ff84ae",
+  "tests/test_mcp_gateway.py": "35b660b37be96698ceb67f4070e8b5bc27cdd92f4e46d38d57b17b875c89ddd3",
+  "docs/archive/UPDATE_MCP_GATEWAY.md": "32ffee3250d3fece9280ad67597e98e2b0fb28be1cf9836493c6de7c7a227f6d"
+}

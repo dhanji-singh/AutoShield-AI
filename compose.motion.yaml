@@ -1,0 +1,13 @@
+services:
+  motion-ui:
+    build: ./motion-ui
+    ports:
+      - "127.0.0.1:8502:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
